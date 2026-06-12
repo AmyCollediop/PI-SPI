@@ -1,0 +1,81 @@
+# ============================================================
+# .gitignore — Projet PI-SPI
+# ============================================================
+
+# ── Environnement Python ─────────────────────────────────────
+pispienv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+
+# ── Fichiers compilés Python ──────────────────────────────────
+*.pyc
+*.pyo
+
+# ── Modèles ML (fichiers lourds) ──────────────────────────────
+models/*/xgb.pkl
+models/*/iso.pkl
+models/*/gnn.pt
+models/*/meta.pkl
+
+# ── Données (volumineuses) ────────────────────────────────────
+datasets/*.parquet
+datasets/*.csv
+datasets/*.json
+datasets/*.ndjson
+
+# ── MLflow ────────────────────────────────────────────────────
+mlflow/mlruns/
+mlflow/
+
+# ── Feast ─────────────────────────────────────────────────────
+feast_repo/data/registry.db
+feast_repo/data/*.parquet
+feast_repo/__pycache__/
+
+# ── Airflow ───────────────────────────────────────────────────
+airflow/logs/
+airflow/plugins/
+airflow.cfg
+airflow.db
+
+# ── Storage local ─────────────────────────────────────────────
+storage/
+
+# ── Flink JAR (lourd) ─────────────────────────────────────────
+*.jar
+
+# ── Logs ──────────────────────────────────────────────────────
+*.log
+logs/
+
+# ── IDE ───────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# ── Secrets ───────────────────────────────────────────────────
+.env
+*.env
+secrets.yaml
+*.pem
+*.key
+
+# ── Streamlit cache ───────────────────────────────────────────
+.streamlit/
+
+# ── Fichiers temporaires ──────────────────────────────────────
+*.tmp
+*.bak
+tmp/
+dy
+whole_weasel/

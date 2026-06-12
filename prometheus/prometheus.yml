@@ -1,0 +1,28 @@
+global:
+  scrape_interval:     5s    # scrape toutes les 5s (temps réel fraude)
+  scrape_timeout:      4s    # timeout < interval pour éviter les chevauchements
+  evaluation_interval: 15s   # évaluation des règles d'alerte
+
+rule_files:
+  - "alerts_pispi.yml"
+
+scrape_configs:
+
+  # Prometheus se scrape lui-même
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["prometheus:9090"]
+
+  # API FastAPI PI-SPI v4.1
+  # host.docker.internal = machine hôte depuis Docker
+  # Sur Linux : ajouter extra_hosts: host.docker.internal:host-gateway
+  - job_name: "pispi-api"
+    metrics_path: /metrics
+    scrape_interval: 5s
+    scrape_timeout:  4s
+    static_configs:
+      - targets: ["host.docker.internal:8000"]
+        labels:
+          env:     "dev"
+          service: "fraud-api"
+          version: "v4.1"

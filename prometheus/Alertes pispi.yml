@@ -1,0 +1,62 @@
+groups:
+  - name: pispi_fraud
+    rules:
+
+      # Taux de fraude anormalement élevé (> 20%)
+      - alert: FraudRateHigh
+        expr: pispi_fraud_rate > 0.20
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Taux de fraude anormalement élevé"
+          description: "fraud_rate={{ $value | humanizePercentage }}"
+
+      # API hors ligne depuis 30s
+      - alert: PispiApiDown
+        expr: up{job="pispi-api"} == 0
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "API PI-SPI hors ligne"
+
+      # Latence scoring P99 > 500ms
+      - alert: ScoringLatencyHigh
+        expr: >
+          histogram_quantile(
+            0.99,
+            rate(pispi_scoring_latency_seconds_bucket[5m])
+          ) > 0.5
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Latence scoring P99 > 500ms"
+
+      # Feast indisponible depuis 5 min
+      - alert: FeastUnavailable
+        expr: pispi_feast_available == 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Feast/Redis indisponible — features batch = 0"
+
+      # Pic de fraude BURST (> 10 déclenchements/min)
+      - alert: BurstFraudSpike
+        expr: rate(pispi_rule_triggered_total{rule_name="BURST"}[1m]) * 60 > 10
+        for: 1m
+        labels:
+          severity: high
+        annotations:
+          summary: "Pic de fraude BURST détecté"
+
+      # Erreurs scoring fréquentes
+      - alert: ScoringErrorsHigh
+        expr: rate(pispi_scoring_errors_total[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Erreurs de scoring fréquentes (> 0.1/s)"

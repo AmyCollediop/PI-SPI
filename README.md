@@ -88,48 +88,35 @@ Kafka (transactions)
 
 ### Prérequis
 - Docker Desktop
-- Python 3.10+
+- Docker Compose v2
 - 8 GB RAM minimum
 
-### Installation
+### Lancer le projet avec Docker
 
 ```bash
-# 1. Cloner le dépôt
+# Cloner le dépôt
 git clone https://github.com/AmyCollediop/PI-SPI.git
 cd PI-SPI
 
-# 2. Créer l'environnement virtuel
-python -m venv pispienv
-pispienv\Scripts\activate  # Windows
-source pispienv/bin/activate  # Linux/Mac
-
-# 3. Installer les dépendances
-pip install -r requirements.txt
-
-# 4. Démarrer l'infrastructure Docker
-docker compose up -d
-
-# 5. Entraîner le modèle
-python training/train_fraud_model.py
-
-# 6. Démarrer l'API
-python streamlit/fraud_api.py
-
-# 7. Démarrer le dashboard
-streamlit run streamlit/app.py
+# Construire les images et démarrer les services
+docker compose up -d --build
 ```
+
+Pour arrêter les services : `docker compose down`.
 
 ### Interfaces
 
-| Service | URL |
-|---------|-----|
-| Dashboard Streamlit | http://localhost:8501 |
-| API FastAPI | http://localhost:8000 |
-| Swagger / Docs | http://localhost:8000/docs |
-| Grafana | http://localhost:3000 |
-| Prometheus | http://localhost:9090 |
-| Airflow | http://localhost:8080 |
-| MinIO Console | http://localhost:9001 |
+| Service | Accès local |
+|---------|-------------|
+| Dashboard Streamlit | [Ouvrir le dashboard](http://localhost:8501) |
+| API FastAPI | [http://localhost:8000](http://localhost:8000) |
+| Swagger / Docs | [http://localhost:8000/docs](http://localhost:8000/docs) |
+| Grafana | [http://localhost:3000](http://localhost:3000) |
+| Prometheus | [http://localhost:9090](http://localhost:9090) |
+| Airflow | [http://localhost:8080](http://localhost:8080) |
+| Console MinIO | [http://localhost:9001](http://localhost:9001) |
+
+Ces adresses sont accessibles sur la machine qui exécute Docker. Pour partager le dashboard avec votre manager sur Internet, déployez le projet sur un serveur et remplacez le lien local par l'URL publique fournie par l'hébergeur.
 
 ---
 

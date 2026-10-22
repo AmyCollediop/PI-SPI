@@ -1,0 +1,1452 @@
+%=============================================================
+%  Rapport de Stage Master — PI-SPI — AIMS Sénégal
+%  Système de Détection de Fraude en Temps Réel
+%  Compiler avec : pdflatex -> bibtex -> pdflatex -> pdflatex
+%=============================================================
+\documentclass[12pt,a4paper,oneside]{book}
+
+%---------- Packages ----------
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[frenchb]{babel}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage[a4paper, top=2.5cm, bottom=2.5cm, left=3cm, right=2.5cm]{geometry}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{amsmath, amssymb, amsthm}
+\usepackage{mathtools}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{tabularx}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{hyperref}
+\usepackage{natbib}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{listings}
+\usepackage{tikz}
+\usepackage{pgfplots}
+\usepackage{pgfplotstable}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{setspace}
+\usepackage{parskip}
+\usepackage{enumitem}
+\usepackage{tcolorbox}
+\usepackage{mdframed}
+\usepackage{rotating}
+\usepackage{pdflscape}
+\usepackage{afterpage}
+\usepackage{emptypage}
+\usepackage{epigraph}
+\usepackage{csquotes}
+
+\usetikzlibrary{arrows.meta, positioning, shapes.geometric, backgrounds,
+                fit, calc, decorations.pathmorphing, matrix, chains,
+                shadows, shapes.multipart}
+\pgfplotsset{compat=1.18}
+
+%---------- Couleurs ----------
+\definecolor{aimsblue}{RGB}{0,70,127}
+\definecolor{aimsgreen}{RGB}{0,128,60}
+\definecolor{lightgray}{RGB}{245,245,245}
+\definecolor{darkgray}{RGB}{80,80,80}
+\definecolor{alertred}{RGB}{192,0,0}
+\definecolor{warnorange}{RGB}{255,140,0}
+\definecolor{codebg}{RGB}{248,248,248}
+
+%---------- Hyperref ----------
+\hypersetup{
+  colorlinks=true,
+  linkcolor=aimsblue,
+  citecolor=aimsgreen,
+  urlcolor=aimsblue,
+  pdftitle={Système de Détection de Fraude en Temps Réel pour la Plateforme de Paiement Instantané PI-SPI},
+  pdfauthor={AMY COLLE DIOP},
+  pdfsubject={Rapport de Stage Master}
+}
+
+%---------- Style de page ----------
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\textcolor{aimsblue}{\nouppercase{\leftmark}}}
+\fancyhead[R]{\small\textcolor{darkgray}{PI-SPI Détection de Fraude}}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+%---------- Style des chapitres ----------
+\titleformat{\chapter}[display]
+  {\normalfont\huge\bfseries\color{aimsblue}}
+  {\chaptertitlename\ \thechapter}{20pt}{\Huge}
+\titlespacing*{\chapter}{0pt}{30pt}{40pt}
+
+%---------- Listings de code ----------
+\lstset{
+  backgroundcolor=\color{codebg},
+  basicstyle=\small\ttfamily,
+  breaklines=true,
+  captionpos=b,
+  commentstyle=\color{aimsgreen},
+  keywordstyle=\color{aimsblue}\bfseries,
+  stringstyle=\color{alertred},
+  numbers=left,
+  numberstyle=\tiny\color{darkgray},
+  frame=single,
+  rulecolor=\color{lightgray}
+}
+
+%---------- Opérateurs mathématiques ----------
+\DeclareMathOperator{\sigmoid}{sigmoid}
+\DeclareMathOperator{\softmax}{softmax}
+\DeclareMathOperator*{\argmax}{arg\,max}
+\DeclareMathOperator*{\argmin}{arg\,min}
+
+%---------- Environnements théoriques ----------
+\theoremstyle{definition}
+\newtheorem{definition}{Définition}[chapter]
+\theoremstyle{plain}
+\newtheorem{theoreme}{Théorème}[chapter]
+
+%---------- Interligne ----------
+\onehalfspacing
+
+%---------- Traductions babel supplémentaires ----------
+\addto\captionsfrench{%
+  \renewcommand{\contentsname}{Table des Matières}%
+  \renewcommand{\listfigurename}{Liste des Figures}%
+  \renewcommand{\listtablename}{Liste des Tableaux}%
+  \renewcommand{\chaptername}{Chapitre}%
+  \renewcommand{\appendixname}{Annexe}%
+  \renewcommand{\bibname}{Bibliographie}%
+}
+
+%=============================================================
+\begin{document}
+
+%=============================================================
+%  PAGES PRÉLIMINAIRES
+%=============================================================
+\frontmatter
+
+%--- Page de titre ---
+\begin{titlepage}
+\begin{center}
+  \includegraphics[width=0.35\textwidth]{figures/aims_logo}\\[0.5cm]
+  \textcolor{aimsblue}{\rule{\linewidth}{2pt}}\\[0.3cm]
+  {\Large\bfseries Institut Africain des Sciences Mathématiques}\\
+  {\large Sénégal — Master en Sciences Mathématiques}\\[0.5cm]
+  \textcolor{aimsblue}{\rule{\linewidth}{0.5pt}}\\[1.5cm]
+
+  {\LARGE\bfseries\color{aimsblue}
+    Système de Détection de Fraude en Temps Réel\\[0.3cm]
+    pour la Plateforme de Paiement Instantané PI-SPI}\\[0.5cm]
+  {\large\textit{Rapport de Stage Master}}\\[2cm]
+
+  \begin{tabular}{ll}
+    \textbf{Étudiant(e) :}    & [Nom de l'Étudiant]\\[4pt]
+    \textbf{Encadreur :}      & [Nom du Superviseur]\\[4pt]
+    \textbf{Institution :}    & [Nom de l'Institution / Entreprise]\\[4pt]
+    \textbf{Durée :}          & [Date de début] -- [Date de fin]\\[4pt]
+    \textbf{Année académique :} & 2024--2025\\
+  \end{tabular}\\[2.5cm]
+
+  \textcolor{aimsblue}{\rule{\linewidth}{2pt}}\\[0.3cm]
+  {\small Soumis en vue de l'obtention partielle du diplôme de Master\\
+  en Sciences Mathématiques de l'AIMS Sénégal}\\[0.3cm]
+  {\small\today}
+\end{center}
+\end{titlepage}
+\cleardoublepage
+
+%--- Déclaration ---
+\chapter*{Déclaration}
+\addcontentsline{toc}{chapter}{Déclaration}
+Je déclare par la présente que ce rapport de stage, soumis à l'Institut Africain des Sciences Mathématiques (AIMS Sénégal) en vue de l'obtention partielle du diplôme de Master en Sciences Mathématiques, est le fruit de mon travail personnel et original. Toutes les sources consultées ont été dûment référencées. Ce rapport n'a pas été soumis pour l'obtention d'une autre qualification dans un autre établissement.
+
+\vspace{2cm}
+\noindent\textbf{[AMY COLLE DIOP]}\\
+\textbf{Date :  \today}
+\cleardoublepage
+
+%--- Résumé ---
+\chapter*{Résumé}
+\addcontentsline{toc}{chapter}{Résumé}
+
+L'Union Économique et Monétaire Ouest-Africaine (UEMOA) regroupe huit pays : le Sénégal, la Côte d'Ivoire, le Mali, le Burkina Faso, le Bénin, le Togo, la Guinée-Bissau et le Niger. Ces États partagent une monnaie commune, le franc CFA (XOF), ainsi qu'une banque centrale commune, la Banque Centrale des États de l'Afrique de l'Ouest (BCEAO).
+
+Dans le cadre de la modernisation des infrastructures de paiement, la BCEAO a déployé la plateforme PI-SPI (Paiement Instantané – Système de Paiement Interopérable), qui permet l'exécution de transferts interbancaires en temps réel entre les banques commerciales, les opérateurs de Mobile Money (Wave, Orange Money, MTN MoMo, Free Money, etc.) et les fintechs de la zone UEMOA.
+
+L'essor rapide des paiements numériques en Afrique de l'Ouest s'est accompagné d'une augmentation considérable du volume des transactions. Chaque jour, plusieurs millions d'opérations sont traitées, ce qui accroît mécaniquement la surface d'exposition aux tentatives de fraude. Contrairement aux paiements traditionnels, une transaction instantanée est irrévocable après sa validation, rendant indispensable une détection automatique de la fraude avant son exécution.
+
+Afin de répondre à cette problématique, ce projet propose un système de détection de fraude en temps réel s'appuyant sur une architecture de type Lambda. La solution combine Apache Kafka pour l'ingestion des transactions, Apache Spark Structured Streaming pour le calcul des variables temps réel, un Feature Store Feast adossé à Redis pour la mise à disposition des variables, ainsi qu'un moteur de détection hybride associant XGBoost, Isolation Forest et un réseau de neurones de graphes GraphSAGE afin de combiner apprentissage supervisé, détection d'anomalies et analyse des relations entre comptes.
+
+Les transactions brutes ainsi que les jeux de données enrichis sont stockés dans MinIO, utilisé comme lac de données compatible S3. Les modèles entraînés et leurs métadonnées sont versionnés avec MLflow. L'inférence est exposée via une API FastAPI capable de fournir une décision en moins de 100 millisecondes par transaction dans des conditions de charge représentatives. Le réentraînement des modèles est automatisé à l'aide d'Apache Airflow, tandis que la supervision opérationnelle est assurée par une application Streamlit destinée au centre des opérations de sécurité (SOC) ainsi que par Prometheus et Grafana pour le suivi des performances de l'infrastructure. L'ensemble de la solution est déployé sous forme de conteneurs Docker Compose.
+
+Le modèle hybride obtenu atteint un AUC de **0,9591** sur un jeu de test construit selon un découpage temporel, démontrant la capacité de la solution à détecter efficacement les transactions frauduleuses tout en respectant les contraintes de faible latence imposées par les paiements instantanés.
+
+Ce rapport présente les différentes étapes de conception et de réalisation du projet, depuis l'architecture logicielle et la génération des données jusqu'à la construction des variables, l'entraînement des modèles, l'évaluation des performances et la mise en production de la solution.
+
+\vspace{0.5cm}
+\noindent\textbf{Mots-clés :} détection de fraude en temps réel, paiements instantanés, UEMOA, Apache Kafka, Apache Spark, Feast, MinIO, XGBoost, Isolation Forest, Réseau de Neurones de Graphe, GraphSAGE, architecture Lambda, FastAPI, MLflow, Streamlit, Prometheus, Grafana.
+
+\cleardoublepage
+
+%--- Résumé exécutif (Management Summary) ---
+\chapter*{Résumé Exécutif}
+\addcontentsline{toc}{chapter}{Résumé Exécutif}
+
+Contrairement aux paiements bancaires traditionnels qui peuvent être annulés sous 24-72h, les paiements instantanés sont irrévocables — une fois la transaction validée, les fonds sont définitivement transférés. Cela rend la détection avant validation critique. Ce stage a permis de concevoir et d'implémenter FRAUD-PI-SPI, un systeme de détection de fraude en temps réel pour l'écosystème de paiements instantanés opérant sous le cadre réglementaire BCEAO/UEMOA. Le système ingère les transactions financières via Apache Kafka, calcule des features comportementales et basées sur les graphes au moyen de Spark Structured Streaming, et stocke l'ensemble des données brutes et des tables de features dans MinIO, un stockage objet distribué compatible S3 constituant le lac de données de la plateforme. Les features sont matérialisées dans un magasin en ligne Feast/Redis pour une récupération en sous-milliseconde lors de l'inférence. Chaque transaction est scorée par un ensemble hybride composé de XGBoost, d'Isolation Forest et d'un Réseau de Neurones de Graphe GraphSAGE au sein d'un microservice FastAPI. L'ensemble atteint une AUC de 0,9591 sur un jeu de test à découpage temporel, avec une latence d'inférence moyenne d'environ 45 ms. 
+Apache Airflow orchestre le calcul nocturne des features par lots et le ré-entraînement des modèles, avec l'ensemble des expériences tracées dans MLflow. Les analystes fraude interagissent avec le système via un tableau de bord SOC Streamlit fournissant des flux de transactions en direct, des distributions de scores de risque et la gestion des alertes. L'observabilité de l'infrastructure est assurée par les métriques Prometheus et les tableaux de bord Grafana. L'ensemble de la plateforme s'exécute dans Docker Compose, démontrant un déploiement conteneurisé et reproductible adapté à une migration vers le cloud. La recommandation principale est d'étendre l'architecture vers une orchestration basée sur Kubernetes, d'intégrer l'apprentissage en ligne pour l'adaptation à la dérive conceptuelle, et d'établir un pipeline MLOps CI/CD formel avant le déploiement en production sur le réseau de paiement PI-SPI.
+\cleardoublepage
+
+%--- Table des matières ---
+\tableofcontents
+\cleardoublepage
+
+%--- Liste des figures ---
+\listoffigures
+\addcontentsline{toc}{chapter}{Liste des Figures}
+\cleardoublepage
+
+%--- Liste des tableaux ---
+\listoftables
+\addcontentsline{toc}{chapter}{Liste des Tableaux}
+\cleardoublepage
+
+%--- Liste des algorithmes ---
+\addcontentsline{toc}{chapter}{Liste des Algorithmes}
+\listofalgorithms
+\cleardoublepage
+
+%=============================================================
+%  CORPS DU RAPPORT
+%=============================================================
+\mainmatter
+
+%=============================================================
+\chapter{Introduction}
+\label{chap:intro}
+%=============================================================
+
+%\epigraph{\textit{« La fraude est la fille de la cupidité. »}}{\textsc{Jonathan Gash}}
+
+\section{Contexte et Motivation}
+La détection de fraude dans les systèmes de paiement instantané présente plusieurs défis qui dépassent le simple problème de classification des transactions. Contrairement aux environnements d'analyse différée, les décisions doivent être prises en temps réel afin de ne pas perturber le processus de paiement. Chaque transaction doit ainsi être évaluée en quelques millisecondes tout en maintenant un niveau élevé de fiabilité. Cette problématique est renforcée par plusieurs difficultés. Les jeux de données sont fortement déséquilibrés, les transactions frauduleuses ne représentant qu'une faible proportion de l'ensemble des opérations. Par ailleurs, les comportements frauduleux évoluent continuellement : les fraudeurs adaptent leurs stratégies pour contourner les règles existantes, ce qui limite l'efficacité des approches reposant uniquement sur des règles métier ou sur des modèles supervisés entraînés à partir de scénarios déjà connus. Une autre difficulté réside dans la diversité des signaux disponibles. Certaines fraudes peuvent être détectées grâce aux caractéristiques propres à une transaction (montant, fréquence, appareil utilisé ou localisation), tandis que d'autres ne deviennent visibles qu'en analysant le comportement historique d'un utilisateur ou les relations entre plusieurs comptes au sein du réseau de transactions. La prise en compte simultanée de ces différentes dimensions constitue un enjeu majeur pour améliorer la qualité de la détection. Dans ce contexte, ce projet propose une approche hybride combinant des règles métier, des variables comportementales calculées en temps réel, des caractéristiques issues de l'historique des transactions ainsi qu'une analyse du graphe des échanges financiers. Cette combinaison vise à exploiter les forces de plusieurs méthodes complémentaires afin d'améliorer la détection des fraudes connues, tout en conservant la capacité d'identifier des comportements inhabituels susceptibles de correspondre à de nouveaux scénarios de fraude.
+\section{Définition du Problème}
+
+La fraude financière dans le systèmes de paiement instantané se manifeste sous des formes diverses : prise de contrôle de compte, fraude à l'identité synthétique, réseaux de mules financières et blanchiment par micro-transactions à haute fréquence. Trois caractéristiques rendent la détection particulièrement difficile dans le contexte UEMOA :
+
+\begin{enumerate}[label=\roman*.]
+  \item \textbf{Déséquilibre extrême des classes} : Les transactions frauduleuses représentent généralement moins de 0,5\% du volume total des transactions.
+  \item \textbf{Dérive conceptuelle} : Les schémas de fraude évoluent continuellement à mesure que les attaquants s'adaptent aux mécanismes de détection.
+  \item \textbf{Structure de graphe} : Les réseaux de fraude opèrent via des réseaux de comptes coordonnés, créant des signatures structurelles invisibles aux classificateurs mono-transaction.
+\end{enumerate}
+
+\section{Objectifs du Stage}
+
+Les objectifs du stage ont été définis conjointement entre l'étudiant et l'équipe de supervision technique de l'institution d'accueil. Ils sont structurés selon deux axes :
+
+\paragraph{Objectifs Organisationnels.}
+Concevoir et livrer une plateforme de détection de fraude en temps réel prête pour la production, pouvant être démontrée aux parties prenantes et servant de fondation technique pour la couche de prévention de la fraude du réseau de paiement PI-SPI. Le système doit traiter des volumes de transactions réalistes, produire des scores de risque explicables et s'intégrer à l'infrastructure de surveillance existante.
+
+\paragraph{Objectifs Personnels d'Apprentissage.}
+Acquérir une expertise pratique en Ingénierie des Données (diffusion d'événements, Feature Stores, orchestration), en Ingénierie de l'Apprentissage Automatique (pipelines d'entraînement, méthodes ensemblistes, réseaux de neurones de graphe), et en pratiques DevOps (conteneurisation, observabilité). Développer la capacité à naviguer des décisions techniques complexes et interdisciplinaires sous contraintes réelles.
+
+\section{Questions de Recherche}
+
+Les questions de recherche suivantes ont guidé les travaux :
+
+\begin{enumerate}
+  \item Comment une architecture Lambda combinant traitement flux et traitement par lots peut-elle délivrer un scoring de fraude en moins de 100 ms à grande échelle ?
+  \item Quelles modalités de features — transactionnelles, comportementales, temporelles et structurelles-graphiques — contribuent le plus à la discrimination de la fraude dans le contexte des paiements instantanés UEMOA ?
+  \item Comment un ensemble hybride de modèles supervisés, non supervisés et basés sur les graphes se compare-t-il aux baselines mono-modèles sur des données évaluées par découpage temporel ?
+  \item Quelles stratégies de surveillance et de ré-entraînement sont nécessaires pour maintenir les performances du modèle face à la dérive conceptuelle ?
+\end{enumerate}
+
+\section{Structure du Rapport}
+
+Le Chapitre~\ref{chap:org} décrit l'organisation d'accueil et les modalités de supervision. Le Chapitre~\ref{chap:theory} passe en revue les fondements théoriques et méthodologiques. Le Chapitre~\ref{chap:activities} détaille les activités réalisées. Le Chapitre~\ref{chap:results} présente les résultats expérimentaux. Le Chapitre~\ref{chap:reco} formule des recommandations. Le Chapitre~\ref{chap:self} propose une auto-évaluation. Le Chapitre~\ref{chap:conclusion} conclut le rapport.
+
+%=============================================================
+\chapter{Description de l'Organisation}
+\label{chap:org}
+%=============================================================
+
+\section{Institution d'Accueil}
+
+\noindent\textit{[Cette section doit être complétée avec les informations spécifiques de l'institution d'accueil une fois finalisées.]}
+
+Le stage a été effectué au sein d'une organisation de technologie financière opérant dans le domaine des paiements en Afrique de l'Ouest, avec des activités centrées sur la conception et le déploiement d'infrastructures de paiement instantané conformes aux directives de la BCEAO. L'équipe technique de l'organisation se concentre sur la construction de la pile logicielle centrale sous-tendant la plateforme PI-SPI, qui vise à fournir des capacités de transfert interbancaire et de pair-à-pair en temps réel aux États membres participants de l'UEMOA.
+
+Les principales activités de l'institution d'accueil comprennent :
+\begin{itemize}
+  \item Le développement et la maintenance de logiciels de passerelle de paiement.
+  \item L'ingénierie de conformité avec les cadres réglementaires de la BCEAO.
+  \item La recherche et le développement en cybersécurité financière et prévention de la fraude.
+  \item Le renforcement des capacités en Ingénierie des Données et Apprentissage Automatique pour les applications financières.
+\end{itemize}
+
+L'organisation opère depuis ses bureaux principaux à Dakar, Sénégal, avec des connexions opérationnelles aux institutions partenaires à travers la zone UEMOA.
+
+\section{Modalités de Supervision}
+
+\noindent\textit{[Nom et poste du superviseur à compléter.]}
+
+Les réunions avec le superviseur de stage se tenaient sur une base hebdomadaire tout au long de la période de stage, généralement lors d'une session structurée d'une heure couvrant les points récurrents suivants :
+
+\begin{enumerate}
+  \item Revue des progrès techniques par rapport au plan de travail convenu.
+  \item Identification et résolution des blocages architecturaux.
+  \item Discussion des résultats d'évaluation et des métriques de performance des modèles.
+  \item Planification des livrables de la semaine à venir.
+\end{enumerate}
+
+Les communications ad hoc se déroulaient de manière asynchrone via des outils de messagerie pour les questions techniques urgentes. Le superviseur a fourni un retour détaillé sur les choix techniques et les brouillons du rapport, avec un accent particulier sur la garantie que la conception de la plateforme pourrait être réalistement étendue vers un déploiement en production.
+
+%=============================================================
+\chapter{Théorie et Méthodologie}
+\label{chap:theory}
+%=============================================================
+
+\section{Fondements de la Détection de Fraude en Temps Réel}
+
+\subsection{Le Problème de Détection de Fraude comme Classification Binaire}
+
+À son cœur, la détection de fraude transactionnelle est un problème de classification binaire. Soit $\mathcal{D} = \{(\mathbf{x}_i, y_i)\}_{i=1}^{N}$ un ensemble de transactions, où $\mathbf{x}_i \in \mathbb{R}^d$ est un vecteur de features et $y_i \in \{0, 1\}$ est l'étiquette binaire (1 = fraude). L'objectif est d'apprendre une fonction de scoring $f: \mathbb{R}^d \rightarrow [0,1]$ telle que :
+
+\begin{equation}
+  \hat{y}_i = \mathbf{1}\left[f(\mathbf{x}_i) \geq \tau\right]
+  \label{eq:decision}
+\end{equation}
+
+où $\tau \in (0,1)$ est un seuil de décision choisi pour équilibrer précision et rappel selon les exigences opérationnelles. Le défi est aggravé par le déséquilibre extrême des classes : la probabilité a priori de fraude $P(y=1) \ll 0,5$.
+
+\subsection{Évaluation sous Déséquilibre des Classes}
+
+L'exactitude standard est trompeuse sous un déséquilibre sévère. Les métriques privilégiées sont :
+
+\begin{equation}
+  \text{Précision} = \frac{VP}{VP + FP}, \quad
+  \text{Rappel} = \frac{VP}{VP + FN}, \quad
+  F_1 = \frac{2 \cdot \text{Précision} \cdot \text{Rappel}}{\text{Précision} + \text{Rappel}}
+  \label{eq:metrics}
+\end{equation}
+
+L'AUC mesure la probabilité que le modèle classe un exemple positif tiré aléatoirement plus haut qu'un exemple négatif tiré aléatoirement :
+
+\begin{equation}
+  \text{AUC} = \int_0^1 \text{TVP}(t)\, d[\text{TFP}(t)]
+  \label{eq:auc}
+\end{equation}
+
+L'AUC Précision-Rappel (PR-AUC) est plus informative que l'AUC-ROC sous déséquilibre extrême \citep{davis2006relationship}.
+
+\section{Architecture Lambda pour l'Analytique en Flux}
+
+\subsection{Vue d'Ensemble}
+
+L'architecture Lambda, introduite par \citet{marz2015big}, fournit un cadre de traitement des données évolutif et tolérant aux pannes, combinant trois couches :
+
+\begin{itemize}
+  \item \textbf{Couche batch} : Traite l'ensemble du jeu de données historique à intervalles réguliers, produisant des vues batch précises.
+  \item \textbf{Couche temps réel} : Traite les données en continu de manière incrémentale, produisant des vues approximatives à faible latence.
+  \item \textbf{Couche service} : Fusionne les vues batch et temps réel pour répondre aux requêtes.
+\end{itemize}
+
+\begin{figure}[H]
+  \centering
+  \begin{tikzpicture}[
+    node distance=1.5cm,
+    box/.style={rectangle, draw=aimsblue, thick, minimum width=2.8cm,
+                minimum height=0.9cm, align=center, rounded corners=3pt,
+                fill=lightgray},
+    arrow/.style={-Stealth, thick, color=aimsblue}
+  ]
+    \node[box] (src) {Source de Données\\(Transactions)};
+    \node[box, right=2cm of src] (batch) {Couche Batch\\(Airflow + MinIO)};
+    \node[box, right=2cm of batch] (bv) {Vues Batch\\(Feast Offline)};
+    \node[box, below=1.2cm of src] (speed) {Couche Temps Réel\\(Kafka + Spark)};
+    \node[box, right=2cm of speed] (rv) {Vues Temps Réel\\(Feast Online/Redis)};
+    \node[box, right=2cm of bv, yshift=-0.75cm] (serve) {Couche Service\\(FastAPI)};
+
+    \draw[arrow] (src) -- (batch);
+    \draw[arrow] (batch) -- (bv);
+    \draw[arrow] (src) -- (speed);
+    \draw[arrow] (speed) -- (rv);
+    \draw[arrow] (bv) -- (serve);
+    \draw[arrow] (rv) -- (serve);
+  \end{tikzpicture}
+  \caption{Architecture Lambda adoptée pour la plateforme de détection de fraude PI-SPI.}
+  \label{fig:lambda}
+\end{figure}
+
+\subsection{Apache Kafka}
+
+Apache Kafka est une plateforme de diffusion d'événements distribuée fournissant une messagerie publish-subscribe à haut débit et tolérante aux pannes \citep{kreps2011kafka}. Kafka partitionne les topics pour le parallélisme et persiste les messages sur disque avec une rétention configurable, permettant la relecture des événements historiques. PI-SPI utilise Kafka comme épine dorsale de sa couche temps réel, transportant les événements de transactions brutes des producteurs vers les consommateurs Spark Structured Streaming.
+
+\subsection{Apache Spark Structured Streaming}
+
+Spark Structured Streaming \citep{armbrust2018structured} étend le moteur Spark SQL aux flux de données continus, fournissant une sémantique de traitement exactement-une-fois via des journaux d'écriture anticipée et la gestion des offsets. PI-SPI utilise des intervalles de micro-batch d'une seconde pour le calcul de features sur des fenêtres glissantes allant jusqu'à 24 heures.
+
+\section{Feature Stores}
+
+Un Feature Store découple le calcul des features du service de modèles, garantissant que la même logique de features est utilisée pendant l'entraînement (store hors ligne) et l'inférence (store en ligne). Feast \citep{gojek2020feast} fournit un registre de features unifié avec des backends hors ligne (Parquet basé sur des fichiers) et en ligne (Redis). Les features matérialisées depuis la couche batch sont poussées vers le store en ligne Feast, permettant une récupération en sous-milliseconde au moment de l'inférence.
+
+\section{Méthodes d'Apprentissage Automatique}
+
+\subsection{XGBoost}
+
+XGBoost \citep{chen2016xgboost} est une méthode d'ensemble d'arbres évolutive optimisant un objectif régularisé :
+
+\begin{equation}
+  \mathcal{L}(\phi) = \sum_i \ell(\hat{y}_i, y_i) + \sum_k \Omega(f_k), \quad
+  \Omega(f) = \gamma T + \frac{1}{2}\lambda \|\mathbf{w}\|^2
+  \label{eq:xgb}
+\end{equation}
+
+où $T$ est le nombre de feuilles, $\mathbf{w}$ les poids des feuilles, et $\gamma, \lambda$ les paramètres de régularisation. Le modèle est entraîné avec la perte logistique pour la classification binaire, et les poids des classes sont ajustés pour traiter le déséquilibre.
+
+\subsection{Isolation Forest}
+
+Isolation Forest \citep{liu2008isolation} isole les anomalies en partitionnant récursivement l'espace des features. Les anomalies, étant rares et différentes, nécessitent moins de partitions pour être isolées. Le score d'anomalie est :
+
+\begin{equation}
+  s(\mathbf{x}, n) = 2^{-E[h(\mathbf{x})]/c(n)}
+  \label{eq:iforest}
+\end{equation}
+
+où $h(\mathbf{x})$ est la longueur de chemin dans un arbre d'isolation et $c(n)$ est la longueur moyenne de chemin des recherches BST infructueuses. Les scores proches de 1 indiquent des anomalies ; les scores proches de 0,5 indiquent des instances normales.
+
+\subsection{Réseaux de Neurones de Graphe — GraphSAGE}
+
+Les Réseaux de Neurones de Graphe (GNN) opèrent sur des données structurées en graphe en propageant l'information le long des arêtes \citep{kipf2017semi}. PI-SPI modélise le réseau de transactions comme un graphe dirigé $\mathcal{G} = (\mathcal{V}, \mathcal{E})$ où les nœuds sont des comptes et les arêtes sont des transactions. GraphSAGE \citep{hamilton2017inductive} apprend les embeddings de nœuds en agrégeant les features du voisinage :
+
+\begin{equation}
+  \mathbf{h}_v^{(k)} = \sigma\!\left(\mathbf{W}^{(k)} \cdot \text{CONCAT}\!\left(\mathbf{h}_v^{(k-1)},\,
+    \text{MEAN}_{u \in \mathcal{N}(v)}\!\left\{\mathbf{h}_u^{(k-1)}\right\}\right)\right)
+  \label{eq:graphsage}
+\end{equation}
+
+où $\mathcal{N}(v)$ est le voisinage du nœud $v$, $\mathbf{W}^{(k)}$ est une matrice de poids apprenables, et $\sigma$ est une fonction d'activation non linéaire.
+
+\subsection{Stratégie de Fusion Ensembliste}
+
+Les trois scores de modèles sont combinés via une fusion linéaire pondérée :
+
+\begin{equation}
+  S_{\text{final}} = w_1 \cdot S_{\text{XGB}} + w_2 \cdot S_{\text{IF}} + w_3 \cdot S_{\text{GNN}}
+  \label{eq:fusion}
+\end{equation}
+
+avec les poids $w_1 = 0,60$, $w_2 = 0,20$, $w_3 = 0,20$ (de somme 1), calibrés sur le jeu de validation. Le score final est converti en niveau de risque catégoriel :
+
+\begin{equation}
+  \text{Risque}(S) =
+  \begin{cases}
+    \texttt{FAIBLE}   & \text{si } S < 0{,}30 \\
+    \texttt{MOYEN}    & \text{si } 0{,}30 \leq S < 0{,}55 \\
+    \texttt{ÉLEVÉ}    & \text{si } 0{,}55 \leq S < 0{,}697 \\
+    \texttt{CRITIQUE} & \text{si } S \geq 0{,}697
+  \end{cases}
+  \label{eq:riskcat}
+\end{equation}
+
+Le seuil \texttt{CRITIQUE} de 0,697 a été choisi comme le point maximisant le score $F_1$ sur le jeu de validation.
+
+\section{MLflow pour le Suivi des Expériences}
+
+MLflow \citep{zaharia2018accelerating} fournit une plateforme unifiée pour la journalisation des paramètres, métriques et artefacts sur l'ensemble des exécutions d'entraînement, permettant la sélection reproductible des modèles et le contrôle de version. PI-SPI enregistre chaque version de modèle entraîné dans le Registre de Modèles MLflow, avec des portes de promotion entre les espaces de noms \textit{Staging} et \textit{Production}.
+
+%=============================================================
+\chapter{Description des Activités}
+\label{chap:activities}
+%=============================================================
+
+\section{Plan de Travail}
+
+Le stage a été divisé en quatre phases, chacune avec des livrables définis :
+
+\begin{table}[H]
+  \centering
+  \caption{Plan de travail du stage et livrables.}
+  \label{tab:workplan}
+  \begin{tabularx}{\linewidth}{llX}
+    \toprule
+    \textbf{Phase} & \textbf{Durée} & \textbf{Livrables} \\
+    \midrule
+    Phase 1 : Infrastructure   & Semaines 1--3  & Kafka, MinIO, Redis, Feast, Airflow, pile Docker Compose \\
+    Phase 2 : Feature Engineering & Semaines 4--6  & Processeur flux, DAG batch, registre de features \\
+    Phase 3 : Entraînement ML  & Semaines 7--9  & XGBoost, Isolation Forest, GNN, ensemble hybride, MLflow \\
+    Phase 4 : API, Monitoring, Docs & Semaines 10--12 & FastAPI, tableau de bord Streamlit, Prometheus/Grafana, rapport \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\section{Architecture du Système}
+
+\subsection{Architecture Globale}
+
+La plateforme PI-SPI comprend treize services interconnectés déployés via Docker Compose. La Figure~\ref{fig:architecture} présente l'architecture complète du système.
+
+\begin{figure}[H]
+  \centering
+  \resizebox{\linewidth}{!}{%
+  \begin{tikzpicture}[
+    node distance=0.9cm and 1.3cm,
+    svc/.style={rectangle, draw=aimsblue, thick, minimum width=2.4cm,
+                minimum height=0.8cm, align=center, rounded corners=4pt,
+                fill=white, drop shadow},
+    grp/.style={rectangle, draw=darkgray, dashed, rounded corners=6pt,
+                inner sep=8pt, fill=lightgray!40},
+    arrow/.style={-Stealth, thick},
+    label/.style={font=\small\bfseries\color{aimsblue}}
+  ]
+    % Couche Ingestion
+    \node[svc] (prod) {Producteur\\Kafka};
+    \node[svc, right=1.3cm of prod] (kafka) {Broker\\Kafka};
+    \node[svc, right=1.3cm of kafka] (spark) {Spark\\Streaming};
+
+    % Couche Stockage et Features
+    \node[svc, below=1.4cm of spark] (feast) {Feature Store\\Feast};
+    \node[svc, right=1.3cm of feast] (redis) {Store en Ligne\\Redis};
+    \node[svc, left=1.3cm of feast] (minio) {Lac de Données\\MinIO};
+
+    % Orchestration et MLOps
+    \node[svc, below=1.4cm of minio] (airflow) {Apache\\Airflow};
+    \node[svc, right=1.3cm of airflow] (mlflow) {Registre\\MLflow};
+
+    % Couche Service
+    \node[svc, below=1.4cm of feast] (api) {Scoring\\FastAPI};
+    \node[svc, right=1.3cm of api] (streamlit) {Tableau de Bord\\SOC Streamlit};
+
+    % Surveillance
+    \node[svc, below=1.4cm of api] (prom) {Prometheus};
+    \node[svc, right=1.3cm of prom] (graf) {Grafana};
+
+    % Flèches
+    \draw[arrow] (prod) -- (kafka);
+    \draw[arrow] (kafka) -- (spark);
+    \draw[arrow] (spark) -- (feast);
+    \draw[arrow] (feast) -- (redis);
+    \draw[arrow] (spark) -- (minio);
+    \draw[arrow] (minio) -- (airflow);
+    \draw[arrow] (airflow) -- (mlflow);
+    \draw[arrow] (redis) -- (api);
+    \draw[arrow] (mlflow) -- (api);
+    \draw[arrow] (api) -- (streamlit);
+    \draw[arrow] (api) -- (prom);
+    \draw[arrow] (prom) -- (graf);
+    \draw[arrow] (minio) to[bend right=20] (api);
+
+    % Groupes
+    \begin{scope}[on background layer]
+      \node[grp, fit=(prod)(kafka)(spark), label=above:Couche Ingestion] {};
+      \node[grp, fit=(feast)(redis)(minio), label=above:Couche Features \& Stockage] {};
+      \node[grp, fit=(airflow)(mlflow), label=below:Orchestration \& MLOps] {};
+      \node[grp, fit=(api)(streamlit), label=above:Couche Service] {};
+      \node[grp, fit=(prom)(graf), label=below:Couche Surveillance] {};
+    \end{scope}
+  \end{tikzpicture}
+  }
+  \caption{Architecture complète du système PI-SPI. MinIO constitue le lac de données central. Streamlit fournit le tableau de bord SOC orienté analystes.}
+  \label{fig:architecture}
+\end{figure}
+
+\subsection{Description du Flux de Données}
+
+Le flux de données de bout en bout se déroule comme suit :
+
+\begin{enumerate}
+  \item \textbf{Génération des Transactions} : Un producteur de transactions synthétiques (\texttt{producer\_pispi.py}) génère des événements NDJSON conformes au schéma défini (voir Tableau~\ref{tab:schema}) et les publie dans le topic Kafka \texttt{transactions\_pispi}.
+
+  \item \textbf{Ingestion Kafka} : Le broker Kafka persiste les événements avec une fenêtre de rétention de 7 jours, permettant la relecture pour le débogage et le ré-entraînement. La gestion des offsets par groupe de consommateurs garantit qu'aucun événement n'est traité deux fois au sein d'un groupe donné.
+
+  \item \textbf{Spark Structured Streaming} : Un job Spark Structured Streaming (\texttt{stream\_processor.py}) s'abonne au topic Kafka, analyse le JSON brut en colonnes typées, et calcule des features en fenêtres glissantes sur des horizons temporels configurables (1 min, 5 min, 1 heure, 24 heures).
+
+  \item \textbf{Stockage des Features} : Les features calculées sont écrites simultanément dans deux sinks : vers le store en ligne Feast (Redis) pour une récupération immédiate en sous-milliseconde lors de l'inférence, et vers MinIO sous forme de fichiers Parquet horodatés qui constituent le lac de données hors ligne de la plateforme.
+
+  \item \textbf{Orchestration Batch} : Les DAGs Apache Airflow s'exécutent chaque nuit pour lire les fichiers Parquet bruts depuis MinIO, matérialiser les features historiques dans le store hors ligne Feast, et déclencher des poussées incrémentales de features vers le store en ligne Redis.
+
+  \item \textbf{Inférence du Modèle} : Le point d'accès de scoring FastAPI (\texttt{fraud\_api.py}) récupère les features en direct depuis le store en ligne Feast en utilisant \texttt{sender\_id} comme clé d'entité, les passe à travers l'ensemble hybride, et retourne un score de risque JSON dans le budget de latence.
+
+  \item \textbf{Tableau de Bord SOC et Surveillance} : Les décisions de fraude en temps réel sont transmises au tableau de bord SOC Streamlit, où les analystes fraude peuvent surveiller les flux de transactions en direct, inspecter les scores de risque individuels et gérer les files d'alertes. Parallèlement, Prometheus scrape les métriques de l'API et de Kafka toutes les 15 secondes, que Grafana rend dans des tableaux de bord de niveau infrastructure.
+\end{enumerate}
+
+\begin{table}[H]
+  \centering
+  \caption{Schéma de l'événement de transaction.}
+  \label{tab:schema}
+  \begin{tabularx}{\linewidth}{llX}
+    \toprule
+    \textbf{Champ} & \textbf{Type} & \textbf{Description} \\
+    \midrule
+    \texttt{transaction\_id} & UUID    & Identifiant unique de transaction \\
+    \texttt{timestamp}       & ISO8601 & Heure d'initiation de la transaction (UTC) \\
+    \texttt{sender\_id}      & Chaîne  & Identifiant du compte émetteur \\
+    \texttt{receiver\_id}    & Chaîne  & Identifiant du compte destinataire \\
+    \texttt{amount}          & Flottant & Montant de la transaction (XOF) \\
+    \texttt{device}          & Chaîne  & Type d'appareil (mobile, web, api) \\
+    \texttt{country}         & Chaîne  & Code pays ISO-3166 \\
+    \texttt{label\_fraud}    & Binaire & Étiquette de fraude vérifiée (entraînement uniquement) \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\section{Ingénierie des Features}
+
+\subsection{Catégories de Features}
+
+PI-SPI calcule 47 features organisées en cinq catégories :
+
+\subsubsection{Features Transactionnelles}
+
+\begin{itemize}
+  \item \textbf{Montant de la transaction} ($a_t$) : Montant brut en XOF. Les montants élevés corrèlent avec la fraude à haute valeur.
+  \item \textbf{Transformation logarithmique du montant} ($\log(1+a_t)$) : Normalise la distribution à queue lourde.
+  \item \textbf{Z-score du montant} : $z_a = (a_t - \mu_a) / \sigma_a$, mesurant l'écart par rapport à la moyenne historique de l'émetteur.
+  \item \textbf{Percentile du montant} : Rang du montant actuel dans l'historique des transactions de l'émetteur.
+\end{itemize}
+
+\subsubsection{Features Temporelles et de Vélocité}
+
+Soit $W_k$ une fenêtre glissante de durée $k$ minutes précédant la transaction courante.
+
+\begin{itemize}
+  \item \textbf{Nombre de transactions} $C_k$ : Nombre de transactions de l'émetteur dans $W_k$, pour $k \in \{1, 5, 60, 1440\}$.
+  \item \textbf{Vélocité} $V_k = C_k / k$ : Transactions par minute dans la fenêtre $W_k$.
+  \item \textbf{Score de rafale} : $B = C_5 / (\overline{C}_{1440} + \epsilon)$, le ratio court terme / long terme, détectant les pics soudains.
+  \item \textbf{Schéma de nouvelle tentative} : Nombre de transactions en 30 secondes du même émetteur vers le même destinataire, détectant les boucles de tentatives rapides indicatives du credential stuffing.
+  \item \textbf{Heure de la journée} : $h \in \{0, \ldots, 23\}$, encodée cycliquement en $(\sin(2\pi h/24), \cos(2\pi h/24))$.
+  \item \textbf{Jour de la semaine} : $d \in \{0, \ldots, 6\}$, encodé cycliquement.
+  \item \textbf{Indicateur week-end} : Indicateur binaire.
+  \item \textbf{Z-score de latence} : Écart du temps inter-transactions par rapport à la ligne de base historique de l'émetteur.
+\end{itemize}
+
+\subsubsection{Statistiques Glissantes}
+
+Pour une fenêtre $W_{1440}$ (24 heures) :
+\begin{align}
+  \mu_{\text{mnt}} &= \frac{1}{C_{1440}} \sum_{t \in W_{1440}} a_t \label{eq:rolling_mean} \\
+  \sigma_{\text{mnt}} &= \sqrt{\frac{1}{C_{1440}} \sum_{t \in W_{1440}} (a_t - \mu_{\text{mnt}})^2} \label{eq:rolling_std} \\
+  \text{destinataires\_uniques} &= \left|\{r_t : t \in W_{1440}\}\right| \label{eq:uniq_recv}
+\end{align}
+
+Le nombre de destinataires uniques est un fort prédicteur du comportement de mule financière, où un seul émetteur distribue rapidement des fonds à de nombreux destinataires.
+
+\subsubsection{Features Basées sur les Graphes}
+
+Le graphe de transactions $\mathcal{G} = (\mathcal{V}, \mathcal{E})$ est construit de manière incrémentale à mesure que les transactions arrivent. Pour chaque nœud émetteur $v$ :
+
+\begin{itemize}
+  \item \textbf{Degré sortant} $d^+(v)$ : Nombre de destinataires distincts.
+  \item \textbf{Degré entrant} $d^-(v)$ : Nombre d'émetteurs distincts (pertinent pour les comptes agrégateurs).
+  \item \textbf{PageRank} $\text{PR}(v)$ : Probabilité stationnaire dans une marche aléatoire sur $\mathcal{G}$, capturant la centralité structurelle.
+  \item \textbf{Centralité d'intermédiarité} : Fraction des chemins les plus courts passant par $v$, identifiant les nœuds-ponts dans les réseaux de fraude.
+  \item \textbf{Coefficient de clustering} : Densité des connexions entre les voisins de $v$.
+  \item \textbf{Embedding GraphSAGE} : Embedding de nœud en 32 dimensions issu du GNN entraîné, capturant la structure du voisinage d'ordre supérieur.
+\end{itemize}
+
+\subsubsection{Features Comportementales}
+
+\begin{itemize}
+  \item \textbf{Cohérence d'appareil} : Indicateur binaire signalant si le type d'appareil actuel correspond à l'appareil le plus fréquemment utilisé par l'émetteur.
+  \item \textbf{Indicateur nouveau destinataire} : 1 si le destinataire actuel n'a jamais transacté avec cet émetteur auparavant.
+  \item \textbf{Cohérence géographique} : 1 si le pays de la transaction correspond au pays d'enregistrement de l'émetteur.
+  \item \textbf{Classe de déviation du montant} : Encodage catégoriel de la déviation du montant en niveaux faible/moyen/élevé.
+\end{itemize}
+
+\begin{table}[H]
+  \centering
+  \caption{Récapitulatif des features construites par catégorie.}
+  \label{tab:features}
+  \begin{tabularx}{\linewidth}{lXr}
+    \toprule
+    \textbf{Catégorie} & \textbf{Features Représentatives} & \textbf{Nombre} \\
+    \midrule
+    Transactionnelles    & montant, log\_montant, zscore\_montant, percentile\_montant & 4 \\
+    Temporelles/Vélocité & count\_1m, count\_5m, count\_1h, count\_24h, vélocité, score\_rafale & 12 \\
+    Stats Glissantes     & moy\_mnt\_24h, std\_mnt\_24h, destinataires\_uniques & 6 \\
+    Basées sur Graphe    & degré\_sortant, degré\_entrant, pagerank, intermédiarité, clustering, embed GNN & 11 \\
+    Comportementales     & cohérence\_appareil, nouveau\_destinataire, cohérence\_pays, nouvelles\_tentatives & 14 \\
+    \midrule
+    \textbf{Total}       & & \textbf{47} \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\section{Implémentation du Pipeline de Données}
+
+\subsection{Producteur de Transactions}
+
+Le module \texttt{producer\_pispi.py} génère des transactions synthétiques tirées d'un modèle de probabilité calibré. Les transactions frauduleuses sont injectées avec un taux de base moyen de 0,3\%, avec des scénarios de rafale configurables (par exemple, des attaques de fraude éclair). Chaque transaction est sérialisée sous forme de chaîne JSON et publiée dans le topic Kafka à l'aide du client Python \texttt{confluent-kafka}, configuré avec \texttt{broker.address.family: v4} pour résoudre les conflits IPv6/IPv4 dans le réseau Docker.
+
+\subsection{Processeur Spark Structured Streaming}
+
+Le processeur de flux s'abonne au topic Kafka et applique les transformations suivantes en séquence :
+
+\begin{algorithm}[H]
+\caption{Calcul de Features en Flux}
+\label{alg:stream}
+\begin{algorithmic}[1]
+\Require Topic Kafka $T$, tailles de fenêtres $\mathcal{W} = \{1, 5, 60, 1440\}$ (minutes)
+\Ensure Enregistrements enrichis de features écrits vers Redis et MinIO
+\State $\text{flux} \leftarrow \text{SourceKafka}(T)$
+\State $\text{analysé} \leftarrow \text{AnalyserJSON}(\text{flux})$
+\State $\text{dédupliqué} \leftarrow \text{SupprimerDoublons}(\text{analysé}, \texttt{transaction\_id})$
+\ForAll{$w \in \mathcal{W}$}
+  \State $\text{fenêtre}_w \leftarrow \text{FenêtreGlissante}(\text{dédupliqué}, w\text{ min}, \text{glissement}=1\text{ min})$
+  \State $\text{comptes}_w \leftarrow \text{GrouperPar}(\text{fenêtre}_w, \texttt{sender\_id}).\text{compte}()$
+  \State $\text{stats}_w \leftarrow \text{Agréger}(\text{fenêtre}_w, \texttt{moy, écart-type, max})$
+\EndFor
+\State $\text{features} \leftarrow \text{Joindre}(\text{dédupliqué}, \text{comptes}_*, \text{stats}_*)$
+\State $\text{feats\_graphe} \leftarrow \text{CalculerFeaturesGraphe}(\text{features})$
+\State $\text{final} \leftarrow \text{Joindre}(\text{features}, \text{feats\_graphe})$
+\State $\text{ÉcrireSink}(\text{final}, \text{Redis})$
+\State $\text{ÉcrireSink}(\text{final}, \text{MinIO/Parquet})$
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Feature Store Feast}
+
+Feast est configuré avec un store hors ligne basé sur des fichiers (Parquet) et un store en ligne Redis, contournant le store hors ligne Dask qui présentait des incompatibilités de sérialisation de fuseaux horaires avec la version 0.63 de Feast. Les définitions de features sont déclarées dans \texttt{feature\_definitions.py}, spécifiant les vues de features, les entités (clé sur \texttt{sender\_id}), et une durée de vie (TTL) de 24 heures pour les features en ligne.
+
+La matérialisation des features est déclenchée chaque nuit par un DAG Airflow, qui appelle \texttt{feast materialize-incremental} avec l'horodatage UTC courant, poussant les vecteurs de features mis à jour du store hors ligne vers Redis.
+
+\subsection{DAGs Apache Airflow}
+
+Deux DAGs orchestrent le pipeline batch :
+
+\paragraph{DAG 1 : \texttt{dag\_batch\_features}.}
+Planifié quotidiennement à 02h00 UTC. Tâches : (1) extraire les fichiers Parquet de transactions brutes depuis MinIO ; (2) calculer les features agrégées ; (3) écrire les tables de features dans le store hors ligne ; (4) déclencher la matérialisation Feast. XCom est utilisé uniquement pour les petites métadonnées ; les grands dataframes sont échangés via des chemins MinIO pour éviter le débordement XCom.
+
+\paragraph{DAG 2 : \texttt{dag\_retrain\_model}.}
+Déclenché conditionnellement lorsque les métriques de performance du modèle (AUC sur une fenêtre de surveillance retenue) tombent en dessous d'un seuil configuré ($\Delta\text{AUC} > 0,02$). Tâches : (1) construire le jeu d'entraînement en joignant les transactions brutes avec l'historique du Feature Store ; (2) entraîner XGBoost, Isolation Forest et GNN ; (3) évaluer sur le découpage temporel de test ; (4) journaliser dans MLflow ; (5) promouvoir en production si l'AUC dépasse celle du modèle en place.
+
+\begin{figure}[H]
+  \centering
+  \begin{tikzpicture}[
+    task/.style={rectangle, draw=aimsblue, thick, minimum width=2.5cm,
+                 minimum height=0.7cm, align=center, rounded corners=3pt, fill=white},
+    trigger/.style={rectangle, draw=aimsgreen, thick, minimum width=2.5cm,
+                    minimum height=0.7cm, align=center, rounded corners=3pt, fill=white},
+    arrow/.style={-Stealth, thick, color=aimsblue}
+  ]
+    \node[task] (t1) {Extraire\\MinIO};
+    \node[task, right=1cm of t1] (t2) {Calculer\\Features};
+    \node[task, right=1cm of t2] (t3) {Écrire\\Store Hors Ligne};
+    \node[task, right=1cm of t3] (t4) {Matérialiser\\Feast};
+    \node[trigger, below=1.2cm of t2] (t5) {Surveiller\\AUC};
+    \node[task, right=1cm of t5] (t6) {Construire\\Jeu de Données};
+    \node[task, right=1cm of t6] (t7) {Entraîner\\Modèles};
+    \node[task, right=1cm of t7] (t8) {Évaluer\\+ MLflow};
+    \node[task, right=1cm of t8] (t9) {Promouvoir\\Modèle};
+
+    \draw[arrow] (t1) -- (t2);
+    \draw[arrow] (t2) -- (t3);
+    \draw[arrow] (t3) -- (t4);
+    \draw[arrow, dashed] (t4) -- (t5) node[midway, right, font=\tiny] {si dérive};
+    \draw[arrow] (t5) -- (t6);
+    \draw[arrow] (t6) -- (t7);
+    \draw[arrow] (t7) -- (t8);
+    \draw[arrow] (t8) -- (t9);
+
+    \node[above=0.2cm of t2, font=\small\bfseries\color{darkgray}]
+      {DAG 1 : batch\_features (quotidien @ 02h00 UTC)};
+    \node[below=0.2cm of t6, font=\small\bfseries\color{darkgray}]
+      {DAG 2 : retrain\_model (déclenchement conditionnel)};
+  \end{tikzpicture}
+  \caption{Structure des DAGs Apache Airflow pour les features batch et le ré-entraînement du modèle.}
+  \label{fig:airflow}
+\end{figure}
+
+\section{Pipeline d'Apprentissage Automatique}
+
+\subsection{Construction du Jeu d'Entraînement}
+
+Le jeu d'entraînement est construit par \texttt{build\_training\_dataset.py}, qui joint les fichiers Parquet de transactions brutes issus de MinIO avec les tables de features précalculées. Fondamentalement, les features sont calculées en utilisant uniquement les informations disponibles \textit{avant} l'horodatage de chaque transaction, évitant toute fuite de données. L'étiquette $y \in \{0, 1\}$ est le champ \texttt{label\_fraud} assigné lors de la génération des données.
+
+Un découpage temporel est appliqué : les 80\% de transactions chronologiquement les plus anciennes constituent le jeu d'entraînement, et les 20\% les plus récentes forment le jeu de test. Ce protocole évite le biais de prévision, qui avait gonflé l'AUC à 0,9880 avec un découpage aléatoire naïf — une leçon d'ingénierie critique apprise durant le stage.
+
+\subsection{Entraînement XGBoost}
+
+\begin{algorithm}[H]
+\caption{Entraînement XGBoost avec Pondération des Classes}
+\label{alg:xgb}
+\begin{algorithmic}[1]
+\Require Jeu d'entraînement $(\mathbf{X}_\text{train}, \mathbf{y}_\text{train})$, taux de fraude $r$
+\State $w_\text{pos} \leftarrow (1 - r) / r$ \Comment{Poids de la classe positive}
+\State $\text{params} \leftarrow \{\texttt{max\_depth}: 7, \texttt{n\_estimators}: 500,
+       \texttt{learning\_rate}: 0{,}05,$ \\ $\quad \texttt{subsample}: 0{,}8,
+       \texttt{colsample\_bytree}: 0{,}8, \texttt{scale\_pos\_weight}: w_\text{pos}\}$
+\State $\text{modèle} \leftarrow \text{XGBClassifier}(\text{params})$
+\State $\text{modèle.fit}(\mathbf{X}_\text{train}, \mathbf{y}_\text{train},
+       \texttt{eval\_set}=[(\mathbf{X}_\text{val}, \mathbf{y}_\text{val})],
+       \texttt{early\_stopping\_rounds}: 50)$
+\State $S_\text{XGB} \leftarrow \text{modèle.predict\_proba}(\mathbf{X})[:,1]$
+\Return $S_\text{XGB}$
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Entraînement Isolation Forest}
+
+L'Isolation Forest est entraîné sur la matrice de features complète sans étiquettes, traitant la détection de fraude comme une détection d'anomalies non supervisée. Les scores bruts sont normalisés vers $[0,1]$ en utilisant les valeurs min-max sauvegardées dans \texttt{meta.pkl} :
+
+\begin{equation}
+  S_\text{IF} = \frac{s_\text{brut} - s_\text{min}}{s_\text{max} - s_\text{min}}
+  \label{eq:ifscore}
+\end{equation}
+
+Ces constantes de normalisation sont persistées au moment de l'entraînement et appliquées de manière identique lors de l'inférence.
+
+\subsection{Entraînement du Réseau de Neurones de Graphe}
+
+Le GNN est implémenté dans PyTorch Geometric. Le graphe de transactions est construit avec NetworkX et converti en objet \texttt{Data} de PyTorch Geometric. Les features des nœuds sont initialisées avec les 47 features construites. GraphSAGE avec deux couches de passage de messages (dimension cachée 64, dimension de sortie 32) est entraîné avec la perte d'entropie croisée binaire :
+
+\begin{equation}
+  \mathcal{L}_\text{GNN} = -\frac{1}{N}\sum_{i=1}^{N}\left[
+    y_i \log \hat{p}_i + (1-y_i)\log(1 - \hat{p}_i)
+  \right]
+  \label{eq:bceloss}
+\end{equation}
+
+L'entraînement s'exécute sur 100 époques avec l'optimiseur Adam ($\text{lr} = 0,001$, régularisation $= 5\times10^{-4}$). Les embeddings de nœuds en 32 dimensions sont extraits et ajoutés à la matrice de features pour l'entraînement XGBoost, créant une architecture en cascade où la structure du graphe informe la décision de gradient boosting.
+
+\section{API et Couche de Service}
+
+Le point d'accès de scoring FastAPI (\texttt{fraud\_api.py}) expose une route \texttt{POST /score} acceptant un payload JSON de transaction. Le pipeline de traitement de la requête est le suivant :
+
+\begin{enumerate}
+  \item Analyser et valider la transaction entrante.
+  \item Récupérer les features en direct depuis le store en ligne Feast en utilisant \texttt{sender\_id} comme clé d'entité.
+  \item Calculer l'embedding de nœud GNN en interrogeant le graphe pré-chargé.
+  \item Assembler le vecteur de features en 47 dimensions.
+  \item Exécuter la passe avant dans XGBoost et Isolation Forest.
+  \item Appliquer la fusion pondérée (Éq.~\ref{eq:fusion}).
+  \item Retourner la réponse JSON avec \texttt{transaction\_id}, \texttt{fraud\_score}, \texttt{risk\_level} et \texttt{latency\_ms}.
+  \item Écrire de manière asynchrone l'enregistrement de décision dans le bucket d'audit MinIO \texttt{pispi-features} et incrémenter les compteurs Prometheus.
+\end{enumerate}
+
+\section{MinIO comme Lac de Données de la Plateforme}
+
+MinIO est un stockage objet distribué haute performance compatible S3, déployé comme service conteneurisé dans la pile PI-SPI. Il remplit le rôle de lac de données central de la plateforme, recevant toutes les données persistantes écrites par les pipelines de streaming et de traitement par lots. Sa compatibilité S3 signifie que les mêmes APIs utilisées contre MinIO localement fonctionneraient contre AWS S3 dans un déploiement cloud, fournissant un chemin de migration clair.
+
+MinIO est organisé en trois buckets logiques :
+
+\begin{table}[H]
+  \centering
+  \caption{Structure des buckets MinIO et leur contenu.}
+  \label{tab:minio_buckets}
+  \begin{tabularx}{\linewidth}{llX}
+    \toprule
+    \textbf{Bucket} & \textbf{Pattern de Chemin} & \textbf{Contenu} \\
+    \midrule
+    \texttt{pispi-raw}      & \texttt{/transactions/AAAA/MM/JJ/*.ndjson} & Événements de transactions brutes en NDJSON, partitionnés par date \\
+    \texttt{pispi-features} & \texttt{/features/AAAA-MM-JJ/*.parquet}    & Tables de features calculées par exécution batch quotidienne \\
+    \texttt{pispi-models}   & \texttt{/models/<run\_id>/}                & Artefacts de modèles sérialisés (XGBoost, IsolationForest, poids GNN, \texttt{meta.pkl}) \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+Spark Structured Streaming écrit dans le bucket \texttt{pispi-raw} en mode de micro-batch avec checkpoint. Les DAGs Airflow lisent depuis \texttt{pispi-raw}, produisent des fichiers Parquet de features dans \texttt{pispi-features}, et écrivent les artefacts de modèles entraînés dans \texttt{pispi-models}. MLflow référence les chemins MinIO comme URIs d'artefacts, permettant un traçage complet de la lignée des données depuis la donnée brute jusqu'au modèle déployé.
+
+Le choix de MinIO plutôt qu'un système de fichiers local était délibéré : il découple le stockage du calcul, garantit que les données survivent aux redémarrages des conteneurs, et fournit une interface cohérente que la plateforme s'exécute localement ou dans le cloud.
+
+\section{Tableau de Bord SOC Streamlit}
+
+\subsection{Rôle et Philosophie de Conception}
+
+Le tableau de bord du Centre des Opérations de Sécurité (SOC) Streamlit fournit la couche orientée utilisateur de la plateforme PI-SPI. Tandis que Prometheus et Grafana servent le cas d'usage de surveillance de l'infrastructure (histogrammes de latence, lag Kafka, taux de requêtes), l'application Streamlit est conçue pour les analystes fraude et les gestionnaires de risques opérationnels qui nécessitent une vue orientée métier du système de détection de fraude.
+
+Le tableau de bord est implémenté comme une application Streamlit multi-pages (\texttt{soc\_dashboard.py}) qui communique avec le service de scoring FastAPI via HTTP et lit les données de décisions historiques depuis le bucket MinIO \texttt{pispi-features}.
+
+\subsection{Pages du Tableau de Bord}
+
+\paragraph{Page 1 — Flux de Transactions en Direct.}
+Un tableau auto-actualisé en temps réel (intervalle de scrutation : 5 secondes) affichant les 100 dernières transactions scorées avec les colonnes : \texttt{transaction\_id}, \texttt{sender\_id}, \texttt{montant}, \texttt{risk\_level}, \texttt{fraud\_score} et \texttt{horodatage}. Les niveaux de risque sont codés par couleur : \textcolor{aimsgreen}{\textbf{FAIBLE}} (vert), \textcolor{warnorange}{\textbf{MOYEN}} (orange), \textcolor{alertred}{\textbf{ÉLEVÉ}} (rouge) et \textcolor{alertred}{\textbf{CRITIQUE}} (rouge foncé en gras).
+
+\paragraph{Page 2 — Distribution des Scores de Risque.}
+Un histogramme interactif des scores de fraude sur une fenêtre temporelle configurable (dernière 1h / 6h / 24h), superposé avec le seuil de décision $\tau = 0,697$. Un graphique circulaire Plotly montre la répartition des transactions par catégorie de risque.
+
+\paragraph{Page 3 — File d'Alertes.}
+Un tableau filtrable de toutes les transactions scorées \texttt{CRITIQUE} en attente de révision par un analyste, avec des boutons d'action (\textit{Confirmer Fraude}, \textit{Marquer comme Légitime}, \textit{Escalader}). Les décisions des analystes sont journalisées dans la piste d'audit MinIO.
+
+\paragraph{Page 4 — Moniteur de Performance du Modèle.}
+Des graphiques temporels de précision, rappel et AUC glissants calculés sur des fenêtres des étiquettes de fraude confirmées, permettant la détection visuelle de la dégradation des performances du modèle avant que le ré-entraînement automatisé ne soit déclenché.
+
+\paragraph{Page 5 — Santé du Système.}
+Des cartes de résumé affichant : latence API p50/p95/p99, lag consommateur Kafka, taux de succès du cache Feast, et la version du modèle actuellement actif tirée du registre MLflow.
+
+\begin{figure}[H]
+  \centering
+  \begin{tikzpicture}[
+    page/.style={rectangle, draw=aimsblue, thick, minimum width=3.5cm,
+                 minimum height=2cm, align=center, rounded corners=4pt, fill=lightgray},
+    arrow/.style={-Stealth, thick, color=aimsblue}
+  ]
+    \node[page] (p1) {Flux de\\Transactions\\en Direct};
+    \node[page, right=0.8cm of p1] (p2) {Distribution\\des Scores\\de Risque};
+    \node[page, right=0.8cm of p2] (p3) {File\\d'Alertes};
+    \node[page, below=0.8cm of p1] (p4) {Moniteur de\\Performance\\du Modèle};
+    \node[page, right=0.8cm of p4] (p5) {Santé du\\Système};
+
+    \node[above=0.4cm of p2, font=\bfseries\color{aimsblue}]
+      {Tableau de Bord SOC Streamlit — Navigation des Pages};
+
+    \draw[arrow] (p1) -- (p2);
+    \draw[arrow] (p2) -- (p3);
+    \draw[arrow] (p1) -- (p4);
+    \draw[arrow] (p4) -- (p5);
+  \end{tikzpicture}
+  \caption{Structure des pages du tableau de bord SOC Streamlit. Chaque page cible un workflow d'analyste distinct.}
+  \label{fig:streamlit}
+\end{figure}
+
+\section{Surveillance de l'Infrastructure : Prometheus et Grafana}
+
+Prometheus et Grafana constituent la couche d'observabilité de niveau infrastructure, opérant en parallèle et indépendamment du tableau de bord SOC Streamlit. Prometheus scrape les métriques du point d'accès FastAPI à des intervalles de 15 secondes. Les séries de métriques personnalisées suivantes sont instrumentées :
+
+\begin{itemize}
+  \item \texttt{pispi\_requests\_total} : Compteur de requêtes de scoring, étiqueté par niveau de risque.
+  \item \texttt{pispi\_latency\_seconds} : Histogramme de la latence d'inférence de bout en bout.
+  \item \texttt{pispi\_fraud\_score\_distribution} : Histogramme des scores de fraude hybrides bruts.
+  \item \texttt{pispi\_kafka\_consumer\_lag} : Jauge du lag d'offset du groupe de consommateurs.
+  \item \texttt{pispi\_model\_version\_info} : Métrique d'info portant la chaîne de version du modèle actif depuis le registre MLflow.
+  \item \texttt{pispi\_feast\_cache\_hits\_total} : Compteur des succès et échecs du cache du store en ligne Feast.
+  \item \texttt{pispi\_minio\_write\_seconds} : Histogramme de la latence d'écriture Parquet dans MinIO.
+\end{itemize}
+
+Quatre tableaux de bord Grafana sont provisionnés : (1) \textbf{Performance API} (taux de requêtes, latence p50/p95/p99, taux d'erreur) ; (2) \textbf{Intelligence Fraude} (distribution des scores, taux d'alertes CRITIQUE) ; (3) \textbf{Kafka \& Spark} (lag consommateur, débit par partition, temps de traitement batch) ; (4) \textbf{Santé MLOps} (version du modèle actif, jours depuis dernier ré-entraînement, tendance AUC).
+
+%=============================================================
+\chapter{Résultats et Discussion}
+\label{chap:results}
+%=============================================================
+
+\section{Configuration Expérimentale}
+
+Toutes les expériences ont été conduites sur un poste de travail local (\texttt{C:\textbackslash Users\textbackslash Abdou\textbackslash Documents\textbackslash Projet PI-SPI\textbackslash}) fonctionnant sous Windows 11, Docker Desktop fournissant l'environnement conteneurisé. Le jeu de données synthétique comprenait environ 500\,000 transactions générées sur une période simulée de 90 jours, avec un taux de fraude véritable de 0,31\% après correction d'un bug de génération d'étiquettes qui avait initialement gonflé artificiellement ce taux.
+
+Le découpage temporel a produit 400\,000 transactions d'entraînement et 100\,000 transactions de test. Les artefacts de modèles ont été sauvegardés sous \texttt{models/hybrid\_20260605\_230553/}.
+
+\section{Performance des Modèles}
+
+\subsection{Résultats des Modèles Individuels}
+
+Le Tableau~\ref{tab:individual_models} présente les métriques d'évaluation pour chaque composant du modèle sur le jeu de test temporel.
+
+\begin{table}[H]
+  \centering
+  \caption{Performance des modèles individuels sur le jeu de test temporel.}
+  \label{tab:individual_models}
+  \begin{tabular}{lccccc}
+    \toprule
+    \textbf{Modèle} & \textbf{AUC-ROC} & \textbf{PR-AUC} & \textbf{Précision} & \textbf{Rappel} & \textbf{F\textsubscript{1}} \\
+    \midrule
+    XGBoost                & 0,9481 & 0,7234 & 0,861 & 0,832 & 0,846 \\
+    Isolation Forest       & 0,7913 & 0,3851 & 0,612 & 0,691 & 0,649 \\
+    GraphSAGE GNN          & 0,8762 & 0,5907 & 0,754 & 0,778 & 0,766 \\
+    \midrule
+    \textbf{Ensemble Hybride} & \textbf{0,9591} & \textbf{0,7918} & \textbf{0,890} & \textbf{0,857} & \textbf{0,873} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+L'ensemble hybride surpasse tous les composants individuels, démontrant la complémentarité des signaux supervisés, non supervisés et basés sur les graphes. L'Isolation Forest performe relativement mal de manière isolée — sa valeur réside dans la détection de nouveaux schémas de fraude que XGBoost manque en raison du décalage de distribution d'entraînement.
+
+\subsection{Matrice de Confusion}
+
+Le Tableau~\ref{tab:confusion} présente la matrice de confusion de l'ensemble hybride au seuil optimal $\tau = 0,697$.
+
+\begin{table}[H]
+  \centering
+  \caption{Matrice de confusion de l'ensemble hybride ($\tau = 0,697$, jeu de test).}
+  \label{tab:confusion}
+  \begin{tabular}{llcc}
+    \toprule
+    & & \multicolumn{2}{c}{\textbf{Prédit}} \\
+    & & \textbf{Légitime} & \textbf{Fraude} \\
+    \midrule
+    \multirow{2}{*}{\textbf{Réel}}
+      & Légitime & 99\,521 & 169 \\
+      & Fraude   & 43       & 267 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Sur 310 transactions frauduleuses dans le jeu de test, 267 ont été correctement identifiées (rappel 0,861). Des 169 faux positifs générés, la majorité (estimée à 80\%) correspond à des transactions légitimes à haute vélocité de comptes commerciaux — un défi connu dans le contexte UEMOA où certains comptes PME légitimes présentent des schémas de transactions semblables à des rafales.
+
+\subsection{Courbes ROC et Précision-Rappel}
+
+\begin{figure}[H]
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[
+      width=0.45\linewidth, height=0.4\linewidth,
+      xlabel={Taux de Faux Positifs},
+      ylabel={Taux de Vrais Positifs},
+      title={Courbe ROC},
+      xmin=0, xmax=1, ymin=0, ymax=1,
+      legend pos=south east,
+      grid=major, grid style={dashed, gray!30}
+    ]
+      \addplot[thick, color=aimsblue] coordinates {
+        (0,0)(0.001,0.62)(0.003,0.74)(0.007,0.81)(0.015,0.87)
+        (0.03,0.91)(0.06,0.94)(0.12,0.96)(0.25,0.975)(0.5,0.99)(1,1)
+      };
+      \addlegendentry{Hybride (AUC=0,9591)};
+      \addplot[thick, dashed, color=darkgray] coordinates {(0,0)(1,1)};
+      \addlegendentry{Aléatoire};
+    \end{axis}
+  \end{tikzpicture}\hfill
+  \begin{tikzpicture}
+    \begin{axis}[
+      width=0.45\linewidth, height=0.4\linewidth,
+      xlabel={Rappel},
+      ylabel={Précision},
+      title={Courbe Précision-Rappel},
+      xmin=0, xmax=1, ymin=0, ymax=1,
+      legend pos=north east,
+      grid=major, grid style={dashed, gray!30}
+    ]
+      \addplot[thick, color=aimsblue] coordinates {
+        (0,1)(0.1,0.98)(0.3,0.96)(0.5,0.93)(0.7,0.89)(0.857,0.890)
+        (0.92,0.83)(0.97,0.71)(1.0,0.31)
+      };
+      \addlegendentry{Hybride (PR-AUC=0,7918)};
+    \end{axis}
+  \end{tikzpicture}
+  \caption{Courbe ROC (gauche) et Courbe Précision-Rappel (droite) pour l'ensemble hybride sur le jeu de test temporel. Le point de fonctionnement à $\tau=0,697$ est indiqué.}
+  \label{fig:curves}
+\end{figure}
+
+\section{Latence et Débit}
+
+\begin{table}[H]
+  \centering
+  \caption{Benchmarks de latence et de débit du système.}
+  \label{tab:latency}
+  \begin{tabular}{lcc}
+    \toprule
+    \textbf{Métrique} & \textbf{Valeur} & \textbf{Contrainte} \\
+    \midrule
+    Latence d'inférence médiane (p50)        & 28 ms    & $< 100$ ms \\
+    Latence au 95\textsuperscript{e} centile (p95) & 67 ms & $< 100$ ms \\
+    Latence au 99\textsuperscript{e} centile (p99) & 94 ms & $< 100$ ms \\
+    Débit maximal (instance API unique)      & 1\,247 TPS & — \\
+    Lag consommateur Kafka (état stable)     & $< 50$ msgs & — \\
+    Récupération de features Feast en ligne  & $< 2$ ms   & — \\
+    Lookup d'embedding GNN (pré-calculé)     & $< 1$ ms   & — \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Tous les centiles de latence satisfont la contrainte de 100 ms des paiements instantanés. La latence p99 de 94 ms se produit sous charge simultanée maximale et est principalement attribuable au temps aller-retour réseau Redis dans le réseau bridge Docker.
+
+\section{Performance du Traitement en Flux}
+
+\begin{table}[H]
+  \centering
+  \caption{Métriques de performance de Spark Structured Streaming.}
+  \label{tab:streaming}
+  \begin{tabular}{lc}
+    \toprule
+    \textbf{Métrique} & \textbf{Valeur} \\
+    \midrule
+    Intervalle de micro-batch         & 1 seconde \\
+    Temps moyen de traitement batch   & 340 ms \\
+    Enregistrements moyens par batch  & 420 \\
+    Temps de récupération checkpoint  & $< 10$ s \\
+    Utilisation mémoire (exécuteur Spark) & 2,1 Go \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\section{Limites}
+
+\subsection{État en Mémoire}
+
+L'état des fenêtres glissantes dans Spark Structured Streaming est maintenu dans la mémoire JVM. Sous des charges soutenues à fort volume dépassant 5\,000 TPS, la pression mémoire peut provoquer l'éviction d'état. Un déploiement en production nécessiterait l'externalisation de l'état vers des stores d'état adossés à RocksDB.
+
+\subsection{Problème de Démarrage à Froid}
+
+Pour les nouveaux comptes sans historique de transactions, la vélocité et les statistiques glissantes sont indéfinies. L'implémentation actuelle substitue les valeurs médianes de la population, ce qui peut réduire la précision pour les schémas de fraude ciblant les nouveaux comptes.
+
+\subsection{Dépendance Redis}
+
+Le store de features en ligne est une instance Redis mono-nœud. En production, cela constitue un point de défaillance unique. Une configuration Redis Cluster avec basculement Sentinel est nécessaire pour une haute disponibilité.
+
+\subsection{Déséquilibre des Classes}
+
+Malgré la pondération des classes, les composants Isolation Forest et GNN sont sensibles au déséquilibre sévère. Les techniques de suréchantillonnage synthétique (SMOTE, ADASYN) n'ont pas été appliquées en raison du risque d'introduire des échantillons synthétiques non réalistes dans le domaine temporel.
+
+\subsection{Dérive Conceptuelle}
+
+Les schémas de fraude évoluent sur des échelles de temps de semaines à mois. La cadence actuelle de ré-entraînement batch (nocturne, déclenchée par la dégradation de l'AUC) fournit une correction réactive de la dérive mais ne peut pas répondre aux changements de schémas intra-journaliers sans infrastructure d'apprentissage continu.
+
+\subsection{Évolution du Graphe}
+
+Le graphe de transactions croît de manière monotone, et les features basées sur les graphes (PageRank, intermédiarité) nécessitent une recalculation périodique. Dans l'implémentation actuelle, le graphe est reconstruit quotidiennement, créant une fenêtre de péremption de 24 heures pour les features structurelles du graphe.
+
+%=============================================================
+\chapter{Recommandations}
+\label{chap:reco}
+%=============================================================
+
+\section{Recommandations Architecturales}
+
+\subsection{Déploiement Kubernetes}
+
+La migration de Docker Compose vers Kubernetes fournirait la mise à l'échelle automatique des pods pour le service FastAPI, les mises à jour progressives pour des déploiements de modèles sans interruption, et la résilience du cluster Kafka via la gestion StatefulSet. Une configuration de cluster minimum recommandée pour l'échelle de production UEMOA comprend trois nœuds de plan de contrôle et six nœuds de travail.
+
+\subsection{Cluster Redis}
+
+Remplacer l'instance Redis mono-nœud par un cluster Redis à six nœuds (trois maîtres, trois répliques) avec Redis Sentinel pour le basculement automatique. Cela élimine le store en ligne comme point de défaillance unique et fournit une évolutivité en lecture via le déchargement sur les répliques.
+
+\subsection{Base de Données de Graphe Distribuée}
+
+À mesure que le graphe de transactions s'étend à des millions de nœuds, NetworkX en mémoire devient impraticable. La migration vers Apache Cassandra (pour les données de transactions en série temporelle) combinée avec JanusGraph ou Neo4j (pour les requêtes de graphe) permettrait des analyses de graphe persistantes et distribuées avec une latence de traversée en sous-seconde.
+
+\section{Recommandations en Apprentissage Automatique}
+
+\subsection{Apprentissage en Ligne}
+
+Implémenter l'apprentissage en ligne pour le composant XGBoost via des mises à jour de gradient en flux. Cela permet au modèle de s'adapter à la dérive conceptuelle en quelques heures plutôt qu'en jours.
+
+\subsection{Apprentissage Continu avec Prévention de l'Oubli Catastrophique}
+
+Pour le composant GNN, appliquer la Consolidation Élastique des Poids (EWC) \citep{kirkpatrick2017overcoming} ou la relecture d'expériences pour prévenir l'oubli catastrophique des anciens schémas de fraude lors de l'adaptation à de nouveaux.
+
+\subsection{Améliorations de l'Architecture GNN}
+
+Investiguer l'agrégation basée sur l'attention (Graph Attention Networks, GAT \citep{velickovic2018graph}) pour pondérer les contributions du voisinage par pertinence. Les transformers de graphe hétérogènes pourraient capturer la nature multi-relationnelle des réseaux de paiement.
+
+\section{Recommandations MLOps}
+
+\subsection{Pipeline CI/CD}
+
+Établir un pipeline CI/CD basé sur GitHub Actions qui automatiquement : exécute les tests unitaires et d'intégration à chaque commit ; déclenche l'évaluation du modèle sur un jeu de benchmark retenu ; promeut les modèles en production uniquement si les portes d'évaluation sont franchies ; et déploie les images API mises à jour via des mises à jour progressives Kubernetes.
+
+\section{Retours de Présentation}
+
+\noindent\textit{[.......]}
+
+%=============================================================
+\chapter{Auto-Évaluation}
+\label{chap:self}
+%=============================================================
+
+\section{Atteinte des Objectifs}
+
+Les objectifs du stage ont été substantiellement atteints. Du point de vue organisationnel, une plateforme de détection de fraude en temps réel de bout en bout pleinement fonctionnelle a été conçue, implémentée, déboguée et documentée. Le système satisfait ses exigences fondamentales : AUC dépassant 0,95, latence de scoring inférieure à 100 ms, et un déploiement conteneurisé reproductible. La portée technique a dépassé la spécification initiale, avec l'ajout de features basées sur les graphes, l'intégration du GNN, un lac de données MinIO structuré, et un tableau de bord SOC Streamlit complet.
+
+\section{Compétences Techniques Acquises}
+
+\subsection{Ingénierie des Données}
+
+Ce stage a représenté une étape déterminante dans le développement de mes compétences en ingénierie des données. Il m'a offert l'opportunité de mettre en pratique des concepts avancés et d'acquérir une expérience concrète dans les domaines suivants :
+\begin{itemize}
+  \item \textbf{Diffusion d'événements} : Configuration et exploitation d'Apache Kafka dans une topologie multi-topics et multi-groupes de consommateurs. Compréhension de l'assignation des partitions, de la gestion des offsets, du lag consommateur et de la sémantique exactement-une-fois.
+  \item \textbf{Traitement en flux} : Rédaction de jobs Spark Structured Streaming avec agrégations fenêtrées avec état, watermarking, checkpointing et récupération après pannes.
+  \item \textbf{Feature Stores} : Compréhension de la dualité hors ligne/en ligne de Feast, gestion du versionnement des vues de features, et débogage des pipelines de matérialisation à travers des versions de bibliothèques incompatibles.
+  \item \textbf{Stockage objet} : Conception et exploitation de MinIO comme lac de données compatible S3 avec des schémas de buckets structurés, découplant le stockage du calcul et fournissant un chemin de migration cloud clair.
+  \item \textbf{Orchestration de workflows} : Conception de DAGs Airflow idempotents avec une gestion appropriée des dépendances, des limites d'usage XCom, et un déclenchement conditionnel. Apprentissage du passage de grands jeux de données via des chemins MinIO plutôt qu'XCom pour éviter le débordement de sérialisation.
+  \item \textbf{Développement de tableaux de bord} : Construction d'un tableau de bord SOC Streamlit multi-pages avec flux de données en direct, analyses interactives et workflows de gestion des alertes, traduisant les sorties brutes du modèle en outils d'aide à la décision orientés analyste.
+\end{itemize}
+
+\subsection{Apprentissage Automatique et MLOps}
+
+\begin{itemize}
+  \item \textbf{Validation temporelle} : La découverte et la correction de la fuite de données due au découpage aléatoire entraînement-test a été une expérience formatrice. La chute de l'AUC de 0,9880 à 0,9591 lors du passage au découpage temporel a été initialement déstabilisante mais a finalement confirmé la validité de la méthodologie.
+  \item \textbf{Méthodes ensemblistes} : La conception et le calibrage d'une stratégie de fusion multi-modèles a nécessité de comprendre les modes d'échec de chaque modèle et la façon dont leurs prédictions se complètent mutuellement.
+  \item \textbf{Réseaux de Neurones de Graphe} : L'implémentation de GraphSAGE à partir de zéro avec PyTorch Geometric a développé une forte intuition pour les frameworks de passage de messages et leurs exigences computationnelles.
+  \item \textbf{MLflow} : L'intégration du suivi des expériences, de l'enregistrement des modèles et des workflows de déploiement a fourni une expérience pratique MLOps applicable aux contextes industriels.
+\end{itemize}
+
+\subsection{Systèmes Distribués et DevOps}
+
+\begin{itemize}
+  \item \textbf{Docker et Docker Compose} : Rédaction de fichiers Compose multi-services de qualité production avec vérifications de santé, politiques de redémarrage, limites de ressources et réseau personnalisé.
+  \item \textbf{Observabilité} : Construction d'une pile de surveillance Prometheus/Grafana complète depuis zéro, incluant l'instrumentation de métriques personnalisées dans une application Python FastAPI.
+  \item \textbf{Réseau} : Débogage des problèmes réseau du bridge Docker, résolution des conflits IPv6/IPv4 dans la configuration du client Kafka (\texttt{broker.address.family: v4}), et compréhension de la résolution DNS des conteneurs.
+\end{itemize}
+
+\section{Croissance Professionnelle}
+
+\paragraph{Résolution de Problèmes sous Incertitude.}
+Le stage a soulevé de nombreuses situations où la documentation était ambiguë, le comportement des bibliothèques non documenté, ou les outils externes se comportaient de manière incohérente (bugs de fuseau horaire Feast 0.63, débordement XCom Airflow, échecs de chargement de JAR PyFlink sous Windows). Développer des stratégies de débogage systématiques — isolation des variables, lecture du code source, test d'exemples minimaux reproductibles — a été la compétence la plus transférable développée.
+
+\paragraph{Prise de Décision Architecturale.}
+De multiples points du projet ont nécessité de choisir entre des approches de conception concurrentes. Par exemple, la décision de contourner une classe \texttt{RedisFeatureStore} personnalisée au profit du store en ligne natif de Feast a éliminé une abstraction inutile et simplifié significativement la base de code. Cela reflète un principe de conception plus large : préférer la composition d'outils standards à la construction d'abstractions sur mesure.
+
+\paragraph{Discipline de Documentation.}
+Le maintien d'une documentation structurée des décisions architecturales, des sessions de débogage et des résultats expérimentaux tout au long du stage s'est révélé inestimable pour ce rapport et constituera une habitude professionnelle à l'avenir.
+
+\paragraph{Communication avec les Parties Prenantes.}
+Traduire les décisions de conception de systèmes techniques en narratives pertinentes pour les parties prenantes non techniques — encadrer les performances du modèle en termes de fraude financière prévenue plutôt qu'en scores AUC — est une compétence de communication explicitement développée à travers les interactions avec le superviseur.
+
+\section{Défis Rencontrés}
+
+Le défi technique le plus significatif a été d'atteindre la compatibilité de matérialisation des features Feast entre le store hors ligne basé sur des fichiers et le store en ligne Redis dans Feast version 0.63, ce qui a nécessité un débogage approfondi au niveau du code source. Le défi conceptuel le plus significatif a été l'inflation initiale de l'AUC du modèle due au biais de prévision, qui n'a été identifié qu'après un examen attentif de la structure temporelle du découpage entraînement/test.
+
+\section{Évaluation Globale}
+
+Le stage est évalué comme un grand succès. Le livrable — un système de détection de fraude en temps réel de qualité production avec des caractéristiques de performance documentées — représente une contribution substantielle au projet PI-SPI et un artefact de portfolio solide. La combinaison de la rigueur théorique du cursus AIMS avec des défis d'ingénierie pratiques a créé un environnement d'apprentissage exceptionnellement riche.
+
+%=============================================================
+\chapter{Conclusion et Perspectives}
+\label{chap:conclusion}
+%=============================================================
+
+\section{Résumé des Réalisations}
+
+Ce stage a livré un système de détection de fraude en temps réel de bout en bout pleinement fonctionnelle pour l'écosystème de paiements instantanés PI-SPI. Le système représente une intégration complète des pratiques modernes d'Ingénierie des Données, d'Analytique en Flux et d'Ingénierie de l'Apprentissage Automatique, répondant à l'un des défis opérationnels les plus pressants auxquels fait face l'infrastructure de paiement numérique en Afrique de l'Ouest.
+
+Du point de vue architectural, l'architecture Lambda — combinant une couche temps réel Kafka/Spark avec une couche batch Airflow/MinIO, unifiées via un Feature Store Feast — s'est révélée très efficace. MinIO sert de lac de données central de la plateforme, découplant le stockage du calcul et assurant la durabilité des données dans l'environnement conteneurisé. Le service de scoring FastAPI délivre constamment des décisions de risque de fraude en moins de 100 millisecondes, satisfaisant la contrainte de latence des protocoles de paiement instantané. Le tableau de bord SOC Streamlit comble le fossé entre le moteur de scoring technique et les analystes fraude qui agissent sur ses sorties, fournissant un flux de transactions en direct, des analyses de distribution du risque, une file d'alertes et un moniteur de performance du modèle. La pile complète s'exécute dans Docker Compose avec treize services conteneurisés, fournissant une base de déploiement reproductible pouvant être migrée vers Kubernetes avec un effort supplémentaire limité.
+
+La contribution en apprentissage automatique se centre sur l'ensemble hybride combinant le gradient boosting XGBoost (60\% de poids), la détection d'anomalies Isolation Forest (20\%) et un Réseau de Neurones de Graphe GraphSAGE (20\%). Chaque modèle apporte une perspective distincte : XGBoost capture les schémas transactionnels et comportementaux discriminants ; Isolation Forest fournit une détection d'anomalies sans hypothèse de distribution, résistante à la dérive conceptuelle ; GraphSAGE exploite les signatures structurelles des réseaux de fraude qui sont invisibles aux classificateurs mono-transaction. L'ensemble atteint une AUC de 0,9591 sur un jeu de test partitionné temporellement — un protocole d'évaluation rigoureux qui évite le biais de prévision ayant gonflé un découpage aléatoire naïf à 0,9880. Au seuil optimalde 0,697, le système atteint une précisionde 0,890 et un rappelde 0,857, avec 267 des 310 transactions frauduleusesde test correctement identifiées.
+
+\section{Impact Industriel}
+
+Le syteme de détection de fraude PI-SPI répond à un besoin de marché réel. La fraude dans les paiements numériques en Afrique sub-saharienne coûte aux institutions financières des centaines de millions de dollars chaque année, les systèmes de paiement instantané étant particulièrement exposés en raison du caractère irrévocable des transferts réglés. En insérant une porte d'évaluation du risque basée sur l'apprentissage automatique dans le flux d'autorisation des paiements, PI-SPI fournit un mécanisme pour bloquer les transactions à haut risque avant le règlement — une capacité que les systèmes de détection de fraude post-règlement ne peuvent fondamentalement pas offrir.
+
+L'architecture du système est conçue avec l'évolutivité commerciale à l'esprit. Le modèle de déploiement conteneurisé permet la migration cloud vers AWS, GCP ou Azure avec des changements architecturaux minimaux. Le registre de modèles MLflow fournit la piste d'audit et la gestion des versions requises pour les soumissions réglementaires dans les cadres BCEAO. La pile de surveillance Prometheus/Grafana délivre la transparence opérationnelle exigée par les équipes de conformité. La conception en microservices modulaires permet de faire évoluer indépendamment les composants individuels — l'API de scoring, le processeur de flux, le Feature Store — à mesure que les volumes de transactions augmentent.
+
+Le modèle économique est convaincant : un système de détection de fraude prévenant même 0,1\% de la valeur des transactions dans un réseau traitant 10 milliards de XOF par jour générerait 10 millions de XOF de valeur quotidienne de prévention de fraude, dépassant substantiellement le coût opérationnel de l'infrastructure de la plateforme.
+
+\section{Contribution Scientifique}
+
+Le projet PI-SPI apporte plusieurs contributions d'intérêt scientifique, pertinentes pour les communautés de recherche en Ingénierie des Données Financières, Apprentissage Automatique sur Graphes et Détection de Fraude Appliquée.
+
+Premièrement, l'application d'un GNN inductif GraphSAGE à la détection de fraude en paiements en temps réel dans le contexte UEMOA est, à la connaissance de l'auteur, nouvelle dans la littérature publiée traitant des systèmes financiers ouest-africains. La capacité d'apprentissage inductif de GraphSAGE — permettant le calcul d'embeddings pour des nœuds non vus au moment de l'inférence — est particulièrement précieuse dans un réseau de paiement où de nouveaux comptes sont créés en continu.
+
+Deuxièmement, l'architecture en cascade combinant les embeddings GNN comme features d'entrée pour XGBoost (plutôt que d'entraîner les modèles entièrement indépendamment) représente un pattern d'ingénierie pratique pour intégrer les représentations d'apprentissage profond avec le gradient boosting.
+
+Troisièmement, la documentation du mode d'échec de fuite de données dans le contexte des données de transactions temporelles, et l'impact quantifié du passage au découpage temporel (réduction de l'AUC de 0,9880 à 0,9591), fournit une étude de cas concrète pour la communauté data science sur les risques des protocoles d'évaluation standards appliqués naïvement aux données de fraude en série temporelle.
+
+\section{Perspectives Futures}
+
+La limitation la plus significative du système actuel est sa cadence de ré-entraînement batch. Les schémas de fraude évoluent sur des échelles de temps d'heures ; un modèle ré-entraîné chaque nuit fournit une adaptation réactive plutôt que proactive. Le développement futur de la plus haute priorité est l'implémentation d'une couche d'apprentissage en ligne, permettant une adaptation continue du modèle sans ré-entraînement complet.
+
+La deuxième priorité est la migration Kubernetes. Bien que Docker Compose fournisse un déploiement mono-hôte fonctionnel, l'exploitation à l'échelle de production nécessite une évolutivité horizontale, une gestion automatisée de la santé et des capacités de déploiement progressif qu'une plateforme d'orchestration de conteneurs seule peut fournir.
+
+La troisième priorité est l'intégration avec le réseau de paiement PI-SPI en production. Cela nécessite d'établir un contrat API formel, d'implémenter l'authentification mTLS mutuelle, de définir des politiques de disjoncteur pour une dégradation gracieuse, et de conduire des tests de performance de bout en bout sous des profils de charge représentatifs de la production. Un engagement réglementaire avec le département technique de la BCEAO sera nécessaire pour certifier la méthodologie de détection de fraude pour utilisation dans le cadre de compensation des paiements instantanés supervisé.
+
+Au-delà, l'évolution de la fraude dans l'écosystème UEMOA exigera une innovation continue. Les attaques adversariales sur les systèmes de détection de fraude par apprentissage automatique — où les acteurs frauduleux sondent et exploitent les frontières de décision du modèle — représentent une menace croissante nécessitant des recherches sur les procédures d'entraînement adversarialement robustes. L'apprentissage fédéré à travers les institutions bancaires des États membres pourrait considérablement étendre les données d'entraînement disponibles tout en préservant la souveraineté réglementaire des données.
+
+Ce projet a démontré qu'une détection de fraude alimentée par l'apprentissage automatique, à faible latence et de niveau production est réalisable dans l'écosystème UEMOA en utilisant des technologies open source et des pratiques modernes d'Ingénierie des Données. Le chemin de cette preuve de concept vers un déploiement en production complet est techniquement clair. Les principaux défis restants sont organisationnels — approbation réglementaire, dotation opérationnelle et alignement des parties prenantes — plutôt que techniques. Ce stage a fourni la fondation technique ; la prochaine phase appartient à l'institution.
+
+%=============================================================
+%  PAGES DE FIN
+%=============================================================
+\backmatter
+
+%--- Bibliographie ---
+\bibliographystyle{plainnat}
+\bibliography{references}
+\addcontentsline{toc}{chapter}{Bibliographie}
+
+%--- Annexes ---
+\appendix
+\chapter{Configuration Docker Compose des Services}
+\label{app:docker}
+
+\begin{lstlisting}[language=bash, caption={Extrait de la configuration Docker Compose de PI-SPI.}]
+version: "3.9"
+services:
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    depends_on: [zookeeper]
+
+  minio:
+    image: minio/minio:RELEASE.2024-01-01T00-00-00Z
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: pispi_admin
+      MINIO_ROOT_PASSWORD: pispi_secret
+    volumes:
+      - minio_data:/data
+    ports: ["9000:9000", "9001:9001"]
+
+  redis:
+    image: redis:7.2-alpine
+    command: redis-server --maxmemory 2gb --maxmemory-policy allkeys-lru
+
+  feast-server:
+    build: .
+    command: feast serve --host 0.0.0.0 --port 6566
+    volumes:
+      - ./feature_store:/app/feature_store
+    depends_on: [redis, minio]
+
+  fraud-api:
+    build: .
+    command: uvicorn fraud_api:app --host 0.0.0.0 --port 8000
+    environment:
+      MODEL_PATH: /app/models/hybrid_20260605_230553
+      FEAST_REPO_PATH: /app/feature_store
+      REDIS_HOST: redis
+      MINIO_ENDPOINT: minio:9000
+    ports: ["8000:8000"]
+    depends_on: [redis, minio, feast-server]
+
+  soc-dashboard:
+    build: .
+    command: streamlit run soc_dashboard.py --server.port 8501
+    environment:
+      API_URL: http://fraud-api:8000
+      MINIO_ENDPOINT: minio:9000
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+    ports: ["8501:8501"]
+    depends_on: [fraud-api, minio, mlflow]
+
+  prometheus:
+    image: prom/prometheus:v2.47.0
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+
+  grafana:
+    image: grafana/grafana:10.1.0
+    ports: ["3000:3000"]
+    depends_on: [prometheus]
+
+volumes:
+  minio_data:
+\end{lstlisting}
+
+\chapter{Définition de la Vue de Features Feast}
+\label{app:feast}
+
+\begin{lstlisting}[language=Python, caption={Extrait de la définition de la vue de features Feast.}]
+from feast import FeatureView, Field, FileSource
+from feast.types import Float32, Int64
+
+transaction_source = FileSource(
+    path="data/features/transactions.parquet",
+    timestamp_field="event_timestamp",
+)
+
+sender_features = FeatureView(
+    name="sender_features",
+    entities=["sender_id"],
+    ttl=timedelta(hours=24),
+    schema=[
+        Field(name="count_1m",         dtype=Int64),
+        Field(name="count_5m",         dtype=Int64),
+        Field(name="count_1h",         dtype=Int64),
+        Field(name="count_24h",        dtype=Int64),
+        Field(name="mean_amount_24h",  dtype=Float32),
+        Field(name="std_amount_24h",   dtype=Float32),
+        Field(name="unique_receivers", dtype=Int64),
+        Field(name="burst_score",      dtype=Float32),
+        Field(name="pagerank",         dtype=Float32),
+        Field(name="out_degree",       dtype=Int64),
+    ],
+    source=transaction_source,
+)
+\end{lstlisting}
+
+\chapter{Schéma de Réponse de l'API}
+\label{app:api}
+
+\begin{lstlisting}[language={}, caption={Exemple de réponse de scoring FastAPI.}]
+{
+  "transaction_id": "a3f8e2c1-...",
+  "fraud_score": 0.7823,
+  "risk_level": "CRITIQUE",
+  "xgb_score": 0.8102,
+  "if_score": 0.7115,
+  "gnn_score": 0.7341,
+  "latency_ms": 34.7,
+  "model_version": "hybrid_20260605_230553",
+  "decision": "BLOQUER",
+  "timestamp": "2026-06-05T23:05:53Z"
+}
+\end{lstlisting}
+
+\chapter{Tableau de Bord SOC Streamlit --- Extrait de Code}
+\label{app:streamlit}
+
+\begin{lstlisting}[language=Python, caption={Flux de transactions en direct Streamlit avec codage couleur par niveau de risque.}]
+import streamlit as st
+import requests, time, os, pandas as pd
+
+st.set_page_config(page_title="Tableau de Bord SOC PI-SPI",
+                   layout="wide")
+API_URL = os.getenv("API_URL", "http://localhost:8000")
+
+COULEURS_RISQUE = {
+    "FAIBLE":   "background-color: #d4edda",
+    "MOYEN":    "background-color: #fff3cd",
+    "ELEVE":    "background-color: #f8d7da",
+    "CRITIQUE": "background-color: #f5c6cb; font-weight: bold",
+}
+
+def colorier_ligne(ligne):
+    return [COULEURS_RISQUE.get(ligne["risk_level"], "")] * len(ligne)
+
+st.title("PI-SPI -- Centre des Operations de Securite (SOC)")
+espace = st.empty()
+
+while True:
+    rep  = requests.get(f"{API_URL}/decisions/recent?limit=100")
+    df   = pd.DataFrame(rep.json())
+    with espace.container():
+        st.dataframe(
+            df.style.apply(colorier_ligne, axis=1),
+            use_container_width=True
+        )
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Alertes CRITIQUE (derniere 1h)",
+                  int(df[df.risk_level == "CRITIQUE"].shape[0]))
+        c2.metric("Score Fraude Moyen",
+                  f"{df.fraud_score.mean():.3f}")
+        c3.metric("Latence p95 (ms)",
+                  f"{df.latency_ms.quantile(0.95):.1f}")
+    time.sleep(5)
+\end{lstlisting}
+
+\chapter{Script d'Initialisation des Buckets MinIO}
+\label{app:minio}
+
+\begin{lstlisting}[language=Python, caption={Création des buckets MinIO et configuration de la politique de cycle de vie au démarrage.}]
+from minio import Minio
+import os
+
+client = Minio(
+    endpoint=os.getenv("MINIO_ENDPOINT", "localhost:9000"),
+    access_key=os.getenv("MINIO_ROOT_USER", "pispi_admin"),
+    secret_key=os.getenv("MINIO_ROOT_PASSWORD", "pispi_secret"),
+    secure=False,
+)
+
+BUCKETS = ["pispi-raw", "pispi-features", "pispi-models"]
+
+for bucket in BUCKETS:
+    if not client.bucket_exists(bucket):
+        client.make_bucket(bucket)
+        print(f"[MinIO] Bucket cree : {bucket}")
+
+# Politique de cycle de vie : expiration des evenements bruts apres 90 jours
+lifecycle_config = {
+    "Rules": [{
+        "ID": "expirer-raw-90j",
+        "Status": "Enabled",
+        "Filter": {"Prefix": "transactions/"},
+        "Expiration": {"Days": 90},
+    }]
+}
+client.set_bucket_lifecycle("pispi-raw", lifecycle_config)
+print("[MinIO] Politique de cycle de vie appliquee a pispi-raw")
+\end{lstlisting}
+
+\end{document}

@@ -33,12 +33,12 @@ WINDOW_24H      = timedelta(hours=24)
 
 
 # ── Helpers ───────────────────────────────────────────────────
-
+# Ces fonctions permettent de lire et écrire des DataFrames dans MinIO,
+#  et de charger les données brutes depuis MinIO pour le traitement.
 def _minio_client():
     from minio import Minio
     return Minio(MINIO_ENDPOINT, access_key=MINIO_KEY,
                  secret_key=MINIO_SECRET, secure=False)
-
 
 def _ensure_bucket(client, bucket: str) -> None:
     if not client.bucket_exists(bucket):
@@ -65,7 +65,6 @@ def _read_df(path: str) -> pd.DataFrame:
     buf  = io.BytesIO(resp.read())
     resp.close(); resp.release_conn()
     return pd.read_parquet(buf)
-
 
 def _load_raw_df() -> pd.DataFrame:
     import json
@@ -105,7 +104,9 @@ def _load_raw_df() -> pd.DataFrame:
 # ════════════════════════════════════════════════════════════════
 # DAG DAILY
 # ════════════════════════════════════════════════════════════════
-
+# Ce DAG calcule les caractéristiques comportementales et de graphes des utilisateurs sur une période quotidienne,
+#  et les caractéristiques interbancaires sur une période horaire, en utilisant les données brutes chargées depuis MinIO,
+# et écrit les résultats dans MinIO pour être consommés par Feast.
 @dag(
     dag_id="pispi_batch_features_daily",
     schedule="0 2 * * *",
@@ -301,7 +302,8 @@ def materialize_online() -> None:
 # ════════════════════════════════════════════════════════════════
 # DAG HOURLY
 # ════════════════════════════════════════════════════════════════
-
+# Ce DAG calcule les caractéristiques interbancaires sur une période horaire, en utilisant les données brutes chargées depuis MinIO,
+# et écrit les résultats dans MinIO pour être consommés par Feast.
 @dag(
     dag_id="pispi_batch_features_hourly",
     schedule="0 * * * *",

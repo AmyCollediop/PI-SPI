@@ -68,7 +68,7 @@ ALL_SCENARIOS = [
 
 client = Minio(MINIO_ENDPOINT, access_key=MINIO_ACCESS, secret_key=MINIO_SECRET, secure=False)
 
-
+# Lecture des transactions depuis MinIO, avec support de plusieurs formats JSON (newline-delimited, array, single object).
 def load_transactions() -> List[dict]:
     """
     Lit les fichiers JSON depuis MinIO.
@@ -136,7 +136,8 @@ def load_transactions() -> List[dict]:
 # ════════════════════════════════════════════════════════════════
 # STREAM FEATURES  (réplique stream_processor.py v4)
 # ════════════════════════════════════════════════════════════════
-
+# Les 21 stream_features sont calculées de manière chronologique pour chaque alias, 
+# en utilisant un historique glissant des transactions passées.
 def _zscore(values: List[float], current: float) -> float:
     if len(values) < 2:
         return 0.0
@@ -144,14 +145,15 @@ def _zscore(values: List[float], current: float) -> float:
     std = float(np.std(values))
     return 0.0 if std == 0.0 else round((current - mu) / std, 4)
 
-
+# L'entropie est calculée sur les valeurs d'une feature catégorielle (ex: device) dans la fenêtre glissante de 24h,
 def _entropy(values: List[str]) -> float:
     if not values:
         return 0.0
     probs = pd.Series(values).value_counts(normalize=True)
     return float(round(-np.sum(probs * np.log2(probs + 1e-12)), 4))
 
-
+# Calcule les 21 stream_features pour une ligne donnée, 
+# en utilisant l'historique glissant des transactions précédentes du même alias.
 def _stream_features_for_row(
     row    : pd.Series,
     history: Deque[Dict[str, Any]],
@@ -225,7 +227,7 @@ def _stream_features_for_row(
         "institution_switch_flag"      : institution_switch_flag,
     }
 
-
+# Les 5 profils d'utilisateurs synthétiques avec leurs caractéristiques et poids de scénario.
 def add_stream_features(df: pd.DataFrame) -> pd.DataFrame:
     logger.info("Calcul stream_features (fenêtres glissantes par alias)…")
     df     = df.sort_values(["payer_alias","timestamp"]).reset_index(drop=True)
@@ -343,7 +345,10 @@ def add_behavioral_features(df: pd.DataFrame) -> pd.DataFrame:
 # ════════════════════════════════════════════════════════════════
 # FEATURE ENGINEERING GLOBAL
 # ════════════════════════════════════════════════════════════════
-
+# Les features sont organisées en 3 FeatureViews pour Feast :
+# 1. stream_features : les 21 features calculées à partir de l'historique glissant de chaque alias (comme dans stream_processor)
+# 2. behavioral_features : les 6 features comportementales calculées de façon chronologique (expanding) pour chaque alias
+# 3. static_features : les features statiques de la transaction (device, pays, institution, etc) transmises par le producer
 def build_features(df: pd.DataFrame) -> pd.DataFrame:
 
     # Renommage défensif (rétro-compat ancien producer)
@@ -405,7 +410,7 @@ def build_features(df: pd.DataFrame) -> pd.DataFrame:
 # ════════════════════════════════════════════════════════════════
 # RÉÉCHANTILLONNAGE
 # ════════════════════════════════════════════════════════════════
-
+# Rééchantillonnage bidirectionnel pour atteindre TARGET_FRAUD_RATE :
 def resample(df: pd.DataFrame, target: float) -> pd.DataFrame:
     fraud = df[df["label_fraud"] == 1]
     legit = df[df["label_fraud"] == 0]
@@ -437,7 +442,7 @@ def resample(df: pd.DataFrame, target: float) -> pd.DataFrame:
 # ════════════════════════════════════════════════════════════════
 # SAUVEGARDE
 # ════════════════════════════════════════════════════════════════
-
+# Avant de sauvegarder, on supprime les colonnes dupliquées (ex: event_timestamp) pour éviter les conflits à la lecture.
 def save_datasets(df: pd.DataFrame) -> None:
     # Supprimer les colonnes dupliquées (garde la première occurrence)
     df = df.loc[:, ~df.columns.duplicated()]
@@ -450,7 +455,7 @@ def save_datasets(df: pd.DataFrame) -> None:
 # ════════════════════════════════════════════════════════════════
 # EXPORT FEAST  (21 stream + 6 behavioral)
 # ════════════════════════════════════════════════════════════════
-
+ 
 FEAST_STREAM = [
     "log_amount","amount_zscore_short_window",
     "tx_count_1min","tx_count_5min","tx_count_10min",
@@ -469,7 +474,8 @@ FEAST_BEHAVIORAL = [
     "receiver_degree","collector_flag","unique_senders_30d",
 ]
 
-
+# Lors de l'export vers Feast, on vérifie que les colonnes attendues sont présentes, on logge les absences, 
+# et on sauvegarde uniquement les colonnes disponibles.
 def update_feast(df: pd.DataFrame) -> None:
     df = df.loc[:, ~df.columns.duplicated()]
     cols = ["payer_alias","event_timestamp"] + FEAST_STREAM + FEAST_BEHAVIORAL
@@ -485,7 +491,8 @@ def update_feast(df: pd.DataFrame) -> None:
 # ════════════════════════════════════════════════════════════════
 # RAPPORT QUALITÉ
 # ════════════════════════════════════════════════════════════════
-
+# Un rapport de qualité simple pour vérifier la distribution des labels, la présence des scénarios, 
+# la cohérence label/is_fraud, et les nulls dans les features clés.
 def quality_report(df: pd.DataFrame) -> None:
     logger.info("=" * 60)
     logger.info("RAPPORT QUALITÉ")

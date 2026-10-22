@@ -1,31 +1,5 @@
-# PI-SPI Fraud Detection Platform
-# requirements.txt
-
-# ── API ───────────────────────────────────────────────
-#fastapi==0.111.0
-#uvicorn[standard]==0.29.0
-#pydantic==2.7.1
-
-# ── ML ───────────────────────────────────────────────
-#xgboost==2.0.3
-#scikit-learn==1.4.2
-#torch==2.3.0
-#torch-geometric==2.5.3
-#shap==0.45.0
-numpy==2.4.6
-#pandas==2.2.2
-
-# ── Feature Store ────────────────────────────────────
-#feast==0.38.0
-#redis==5.0.4
-
-# ── Frontend ─────────────────────────────────────────
-#streamlit==1.35.0
-#plotly==5.22.0
-#streamlit-extras==0.4.3
-
-# ── Storage ──────────────────────────────────────────
-#minio==7.2.7
-
-# ── Kafka ────────────────────────────────────────────
-#confluent-kafka==2.4.0
+streamlit==1.58.0
+pandas==2.2.3
+plotly==6.8.0
+requests==2.32.3
+minio==7.2.20

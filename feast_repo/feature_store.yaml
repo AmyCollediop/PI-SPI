@@ -1,15 +1,16 @@
+# Feast repository configuration
 project: pispi
-registry: data/registry.db
+registry: data/registry.db # Chemin vers le fichier de registre local
 provider: local
 
 online_store:
-  type: redis
+  type: redis # Utilisation de Redis pour le stockage en ligne (feature serving)
 
 offline_store:
-  type: file
+  type: file # Fichier local pour le stockage hors ligne
 
-entity_key_serialization_version: 3
+entity_key_serialization_version: 3 # Version de sérialisation des clés d'entité (important pour la compatibilité)
 
 aws_access_key_id: admin
-aws_secret_access_key: password123
-s3_endpoint_url: http://localhost:9000
+aws_secret_access_key: password123 # MinIO credentials
+s3_endpoint_url: http://localhost:9000 # MinIO endpoint

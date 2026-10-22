@@ -1,7 +1,9 @@
 """
 populate_history.py  v2  ·  PI-SPI
 =====================================
-Corrections v2 :
+Script de peuplement de l'historique mémoire de l'API PI-SPI avec des transactions synthétiques.
+Chaque alias reçoit un nombre défini de transactions, dont une petite fraction sont frauduleuses.
+Corrections majeures par rapport à la v1 :
   1. /api/metrics au lieu de /metrics (Prometheus text → JSON)
   2. Progress bar sans aliases.index() (O(n²) → O(1))
   3. Timestamps corrigés (now_ms recalculé à chaque alias)
@@ -16,12 +18,15 @@ from datetime import datetime, timezone
 import requests
 from torch import Dict, List
 
+
+# ── URL de l'API ─────────────────────────────────────────────
 API_URL = "http://localhost:8000"
 
 # ── Référentiels ────────────────────────────────────────────
 PAYS_UEMOA      : List[str] = ["SN", "CI", "ML", "BF", "BJ", "TG", "GW", "NE"]
 PAYS_RISQUE     : List[str] = ["NG", "GH", "CM", "MA", "FR", "US", "CN", "AE"]
 
+# ── Institutions ────────────────────────────────────────────
 INSTITUTIONS: Dict[str, List[str]] = {
     "SN": ["CBAO-SN", "SGBS-SN", "BIS-SN", "WAVE-SN", "ORANGE-MONEY-SN", "FREE-MONEY-SN"],
     "CI": ["BICICI-CI", "SIB-CI", "MTN-MOMO-CI", "ORANGE-CI", "ECOBANK-CI"],
@@ -32,6 +37,9 @@ INSTITUTIONS: Dict[str, List[str]] = {
     "GW": ["BDU-GW", "ORANGE-GW"],
     "NE": ["BIA-NE", "AIRTEL-NE", "ORANGE-NE"],
 }
+# Institutions "risque" pour les transactions frauduleuses (souvent hors UEMOA)
+INSTITUTIONS_RISQUE: List[str] = ["ZENITH-NG", "GTB-NG", "HSBC-AE"]
+# Types de transactions, statuts et appareils
 DEVICES  = ["ANDROID", "IOS", "WEB", "USSD", "FEATURE_PHONE"]
 TX_TYPES = ["P2P", "P2M", "TRANSFER", "RTP"]
 STATUSES = ["SUCCESS"] * 14 + ["FAILED"] * 4 + ["REJECTED"] * 2
@@ -45,7 +53,7 @@ ALIAS_PROFILES = {
     "traveler": {"avg": 120_000, "std": 60_000,  "country": "SN"},
 }
 
-
+# ── Fonction de génération de transaction synthétique ───────────────────────────────
 def make_transaction(alias: str, profile: dict, ts_ms: int, is_fraud: bool = False) -> dict:
     country = profile["country"]
     amount  = max(500, int(random.gauss(profile["avg"], profile["std"])))
@@ -53,7 +61,7 @@ def make_transaction(alias: str, profile: dict, ts_ms: int, is_fraud: bool = Fal
     if is_fraud:
         amount       = amount * random.randint(8, 15)
         recv_country = random.choice(PAYS_RISQUE)
-        recv_inst    = random.choice(["ZENITH-NG", "GTB-NG", "HSBC-AE"])
+        recv_inst    = random.choice(INSTITUTIONS_RISQUE)
         device       = "UNKNOWN_ANDROID"
     else:
         recv_country = country if random.random() < 0.85 else random.choice(PAYS_UEMOA)
@@ -79,7 +87,9 @@ def make_transaction(alias: str, profile: dict, ts_ms: int, is_fraud: bool = Fal
         "is_rtp"               : 0,
     }
 
-
+# ════════════════════════════════════════════════════════════════
+# FEAST FEATURE VIEWS
+# ════════════════════════════════════════════════════════════════
 def populate(n_alias: int = 300, tx_per_alias: int = 20, fast: bool = False):
 
     # ── Vérifier l'API ────────────────────────────────────────

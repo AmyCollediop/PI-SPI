@@ -161,7 +161,10 @@ RULES: List[Tuple[str, Any]] = [
                    and float(tx.get("amount", 0)) > 50_000),
 ]
 
-
+# ========================================================
+# RÉFÉRENTIELS DE GÉNÉRATION DE TRANSACTIONS SYNTHÉTIQUES
+# (utilisés pour peupler l'historique mémoire de l'API)
+# ========================================================
 def _apply_rules(tx: dict, features: dict) -> Tuple[List[str], int]:
     """
     Évalue les 12 règles métier.
@@ -172,7 +175,7 @@ def _apply_rules(tx: dict, features: dict) -> Tuple[List[str], int]:
     score    = min(len(triggers) * 20, 100)
     return triggers, score
 
-
+# Référentiels de pays, institutions, profils, etc. pour la génération de transactions synthétiques
 def _safe_rule(rule, tx: dict, features: dict) -> bool:
     """Évalue une règle avec protection contre les exceptions."""
     try:
@@ -185,12 +188,13 @@ def _safe_rule(rule, tx: dict, features: dict) -> bool:
 # GNN
 # =========================================================
 
+# Modèle GraphSAGE simple à 2 couches (architecture standard pour les tâches de classification de nœuds)
 class GraphSAGE(torch.nn.Module):
     def __init__(self, in_dim: int, hidden: int = 64):
         super().__init__()
         self.conv1 = SAGEConv(in_dim, hidden)
         self.conv2 = SAGEConv(hidden, 2)
-
+    #forward reçoit un objet Data de PyG avec data.x (features) et data.edge_index (arêtes)
     def forward(self, data: Data):
         x = F.relu(self.conv1(data.x, data.edge_index))
         x = F.dropout(x, p=0.4, training=self.training)
@@ -201,6 +205,7 @@ class GraphSAGE(torch.nn.Module):
 # CHARGEMENT DU MODÈLE
 # =========================================================
 
+# Le modèle est chargé depuis le dossier "models" avec les fichiers xgb.pkl, iso.pkl, meta.pkl et optionnellement gnn.pt
 def _load_latest_model():
     candidates = sorted(MODEL_DIR.glob("hybrid_*"))
     if not candidates:
@@ -247,6 +252,7 @@ xgb, iso, gnn_model, node_map, MODEL_FEATURES, THRESHOLD, ISO_MIN, ISO_MAX, MODE
 # FEAST
 # =========================================================
 
+# Tentative de connexion à Feast (si échec, fallback avec features à 0)
 try:
     feast_store = FeatureStore(repo_path=str(FEAST_REPO))
     FEAST_AVAILABLE = True
@@ -260,6 +266,7 @@ except Exception as e:
 # SHAP
 # =========================================================
 
+# Tentative de chargement de SHAP pour l'explicabilité (si échec, fallback sans explications)
 try:
     import shap
     shap_explainer = shap.TreeExplainer(xgb)
@@ -270,13 +277,13 @@ except Exception:
 # =========================================================
 # HISTORIQUE EN MÉMOIRE (9 champs — identique stream_processor)
 # =========================================================
-
+# Structure : history[alias] = deque([{"ts":..., "amount":..., "device":..., ...}, ...], maxlen=500)
 history: Dict[str, Deque[Dict[str, Any]]] = defaultdict(lambda: deque(maxlen=500))
 
 # Compteur d'alertes récentes par alias (pour /alerts)
 alert_log: Deque[Dict[str, Any]] = deque(maxlen=1000)
 
-
+# Fonction pour mettre à jour l'historique après chaque transaction
 def _update_history(alias: str, tx: dict, now_ms: int) -> None:
     history[alias].append({
         "ts"          : now_ms,
@@ -294,6 +301,7 @@ def _update_history(alias: str, tx: dict, now_ms: int) -> None:
 # UTILS
 # =========================================================
 
+# Fonctions utilitaires pour le calcul de features (z-score, entropie, etc.)
 def _zscore(values: List[float], current: float) -> float:
     if len(values) < 2:
         return 0.0
@@ -301,7 +309,7 @@ def _zscore(values: List[float], current: float) -> float:
     std = float(np.std(values))
     return 0.0 if std == 0 else round((current - mu) / std, 4)
 
-
+# Calcul de l'entropie de Shannon pour une liste de valeurs catégorielles (ex: devices utilisés en 24h)
 def _shannon_entropy(values: List[str]) -> float:
     if not values:
         return 0.0
@@ -313,6 +321,7 @@ def _shannon_entropy(values: List[str]) -> float:
 # STREAM FEATURES (formules identiques stream_processor.py v4)
 # =========================================================
 
+# Fonction de calcul des features de streaming à partir de la transaction entrante et de l'historique en mémoire
 def _compute_stream_features(tx: dict, now_ms: int) -> Dict[str, Any]:
     alias = tx["payer_alias"]
     hist  = list(history[alias])
@@ -412,6 +421,7 @@ def _compute_stream_features(tx: dict, now_ms: int) -> Dict[str, Any]:
 # =========================================================
 # FEAST FEATURES
 # =========================================================
+# Fonction pour récupérer les features de Feast à partir de l'alias du payeur
 def _get_feast_features(alias: str) -> Dict[str, Any]:
     defaults = {f: 0.0 for f in FEAST_BEHAVIORAL + FEAST_INTERBANK + FEAST_GRAPH}
     if not FEAST_AVAILABLE or feast_store is None:
@@ -439,7 +449,7 @@ def _get_feast_features(alias: str) -> Dict[str, Any]:
 # =========================================================
 # GNN SCORE
 # =========================================================
-
+# Fonction pour récupérer le score du GNN à partir de l'alias du payeur
 def _get_gnn_score(alias: str) -> float:
     if gnn_model is None:
         return 0.5
@@ -451,7 +461,7 @@ def _get_gnn_score(alias: str) -> float:
 # =========================================================
 # VECTEUR DE FEATURES
 # =========================================================
-
+# Fonction pour construire le vecteur de features final à partir des features de streaming et de Feast
 def _build_feature_vector(
     stream_feats: Dict[str, Any],
     feast_feats : Dict[str, Any],
@@ -481,6 +491,8 @@ def _build_feature_vector(
 # =========================================================
 # FASTAPI
 # =========================================================
+
+# Création de l'application FastAPI 
 app = FastAPI(
     title="Fraud Detection API v4.1",
     description="PI-SPI — ML hybride + 12 règles métier + Feast + GNN",
@@ -517,7 +529,7 @@ setup_monitoring(app)
 # =========================================================
 # /score — endpoint principal
 # =========================================================
-
+# Processus de scoring complet : calcul des features, application des règles, scoring ML, fusion, explicabilité, mise à jour de l'historique et journalisation des alertes.
 @app.post("/score")
 def score(tx: TransactionRequest):
     t_start = time.perf_counter()
@@ -567,12 +579,14 @@ def score(tx: TransactionRequest):
     # Une transaction avec des règles déclenchées ET un score ML modéré
     # peut quand même être HIGH/CRITICAL via rule_floor.
     #
-    risk_level = (
-        "CRITICAL" if final_score >= 0.90           else
-        "HIGH"     if final_score >= THRESHOLD       else
-        "MEDIUM"   if final_score >= THRESHOLD * 0.7 else
-        "LOW"
-    )
+    if final_score >= 0.90 or rule_score >= 80:
+        risk_level = "CRITICAL"
+    elif final_score >= THRESHOLD or rule_score >= 60:
+        risk_level = "HIGH"
+    elif final_score >= THRESHOLD * 0.7 or rule_score >= 40:
+        risk_level = "MEDIUM"
+    else:
+        risk_level = "LOW"
 
     # ── 7. SHAP ────────────────────────────────────────────────
     top_features = []
@@ -609,7 +623,7 @@ def score(tx: TransactionRequest):
             "risk_level"   : risk_level,
             "amount"       : tx.amount,
         })
-
+    # Calcul de la latence totale du scoring (pour Prometheus)
     latency_ms = round((time.perf_counter() - t_start) * 1000, 2)
 
 # ── Métriques Prometheus ────────────────────────────────
@@ -667,7 +681,7 @@ def score(tx: TransactionRequest):
 # =========================================================
 # /health
 # =========================================================
-
+# Endpoint de santé pour vérifier que l'API est opérationnelle et connaître les détails du modèle chargé
 @app.get("/health")
 def health():
     return {
@@ -688,7 +702,7 @@ def health():
 # =========================================================
 # /metrics
 # =========================================================
-
+# Endpoint pour exposer des métriques opérationnelles et de performance de l'API, ainsi que des statistiques sur les alertes récentes
 @app.get("/api/metrics")
 def metrics():
     alias_sizes = [len(v) for v in history.values()]
@@ -715,7 +729,7 @@ def metrics():
 # =========================================================
 # /alerts — 50 dernières alertes
 # =========================================================
-
+# Endpoint pour consulter les dernières alertes générées par l'API, avec des détails sur les règles déclenchées et les scores associés
 @app.get("/alerts")
 def alerts(limit: int = 50):
     """Retourne les dernières alertes (règles déclenchées OU score ML élevé)."""
@@ -730,7 +744,7 @@ def alerts(limit: int = 50):
 # =========================================================
 # /features/{alias} — debug
 # =========================================================
-
+# Endpoint de debug pour consulter les features de streaming et de Feast d'un alias donné, ainsi que la taille de son historique en mémoire
 @app.get("/features/{alias}")
 def get_features(alias: str):
     feast_feats = _get_feast_features(alias)
@@ -746,7 +760,7 @@ def get_features(alias: str):
 # =========================================================
 # /rules — liste des 12 règles et leur logique
 # =========================================================
-
+# Endpoint pour consulter la liste des règles métier actives, leur contribution au score et les formules de scoring et de fusion utilisées
 @app.get("/rules")
 def list_rules():
     """Retourne la liste des 12 règles métier actives."""

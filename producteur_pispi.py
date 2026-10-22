@@ -105,7 +105,7 @@ SEUILS_BCEAO    : List[float] = [300_000, 500_000, 1_000_000, 2_000_000]
 # ════════════════════════════════════════════════════════════════
 # ENUMS
 # ════════════════════════════════════════════════════════════════
-
+# Les profils d'utilisateurs simulés, avec leurs caractéristiques comportementales 
 class ProfileType(str, Enum):
     NORMAL_USER       = "NORMAL_USER"
     MERCHANT          = "MERCHANT"
@@ -115,7 +115,7 @@ class ProfileType(str, Enum):
     HIGH_RISK_USER    = "HIGH_RISK_USER"
     MULE_ACCOUNT      = "MULE_ACCOUNT"
 
-
+# Les scénarios de fraude simulés, avec leur logique spécifique et leur impact sur les features et les scores
 class Scenario(str, Enum):
     NONE              = "NONE"
     ACCOUNT_TAKEOVER  = "ACCOUNT_TAKEOVER"
@@ -133,7 +133,8 @@ class Scenario(str, Enum):
 # ════════════════════════════════════════════════════════════════
 # ÉTAT UTILISATEUR
 # ════════════════════════════════════════════════════════════════
-
+# Représente l'état complet d'un utilisateur (alias) dans le système, avec son profil, son historique de transactions,
+#  ses appareils connus, ses bénéficiaires habituels, et son état de scénario actif.
 @dataclass
 class TxRecord:
     ts_ms       : int
@@ -207,7 +208,7 @@ class UserState:
 # ════════════════════════════════════════════════════════════════
 # PROFILS
 # ════════════════════════════════════════════════════════════════
-
+# Définition des profils d'utilisateurs simulés, avec leurs caractéristiques comportementales 
 @dataclass
 class UserProfile:
     profile_type    : ProfileType
@@ -222,7 +223,9 @@ class UserProfile:
     n_beneficiaries : int
     scenario_weights: Dict[str, float]
 
-
+# ════════════════════════════════════════════════════════════════
+# FEAST FEATURE VIEWS (STREAMING + HISTORIQUES)       
+# ════════════════════════════════════════════════════════════════
 PROFILES: Dict[ProfileType, UserProfile] = {
 
     ProfileType.NORMAL_USER: UserProfile(
@@ -240,7 +243,8 @@ PROFILES: Dict[ProfileType, UserProfile] = {
             "RTP_ABUSE":0.000,"NEW_DEVICE":0.010,
         },
     ),
-
+    # Les autres profils (MERCHANT, HIGH_NET_WORTH, FREQUENT_TRAVELER, NEW_ACCOUNT, HIGH_RISK_USER, MULE_ACCOUNT) 
+    # sont définis de manière similaire avec leurs propres caractéristiques et poids de scénario.
     ProfileType.MERCHANT: UserProfile(
         profile_type    = ProfileType.MERCHANT,
         avg_amount=85_000, stddev_amount=40_000,
@@ -272,7 +276,8 @@ PROFILES: Dict[ProfileType, UserProfile] = {
             "RTP_ABUSE":0.000,"NEW_DEVICE":0.010,
         },
     ),
-
+    # Les autres profils (FREQUENT_TRAVELER, NEW_ACCOUNT, HIGH_RISK_USER, MULE_ACCOUNT) s
+    # ont définis de manière similaire avec leurs propres caractéristiques et poids de scénario.
     ProfileType.FREQUENT_TRAVELER: UserProfile(
         profile_type    = ProfileType.FREQUENT_TRAVELER,
         avg_amount=120_000, stddev_amount=60_000,
@@ -337,7 +342,8 @@ PROFILES: Dict[ProfileType, UserProfile] = {
         },
     ),
 }
-
+# Les autres profils (FREQUENT_TRAVELER, NEW_ACCOUNT, HIGH_RISK_USER, MULE_ACCOUNT) sont définis de manière similaire 
+# avec leurs propres caractéristiques et poids de scénario.
 PROFILE_DISTRIBUTION: List[Tuple[ProfileType, float]] = [
     (ProfileType.NORMAL_USER,       0.42),
     (ProfileType.MERCHANT,          0.15),
@@ -352,17 +358,24 @@ PROFILE_DISTRIBUTION: List[Tuple[ProfileType, float]] = [
 # ════════════════════════════════════════════════════════════════
 # USER POOL
 # ════════════════════════════════════════════════════════════════
-
+# Pool d'utilisateurs simulés, avec leur état complet (profil, historique, appareils connus, bénéficiaires habituels, etc.)
+#  et une méthode de tirage aléatoire pondérée par la fréquence d'activité.
 class UserPool:
-
+    # Initialise le pool avec n utilisateurs synthétiques, en se basant sur les profils définis 
+    # et en attribuant des caractéristiques réalistes (âge du compte, pays, institution, appareils, bénéficiaires, etc.).
     def __init__(self, n: int, seed_time: datetime) -> None:
         self._pool: Dict[str, UserState] = {}
         self._build(n, seed_time)
-
+    # Peuplement du pool d'utilisateurs synthétiques, avec des caractéristiques réalistes basées sur les profils définis,
+    #  et une distribution de scénarios frauduleux selon les poids spécifiés pour chaque profil.
     def _build(self, n: int, now: datetime) -> None:
         p_types  = [p for p, _ in PROFILE_DISTRIBUTION]
         p_weights= [w for _, w in PROFILE_DISTRIBUTION]
-
+        # Pour chaque utilisateur à créer, on génère un alias unique, on choisit un profil selon la distribution définie, 
+        # on attribue un pays et une institution de base, on détermine l'âge du compte, 
+        # les montants moyens et l'écart-type des transactions, les appareils habituels, les bénéficiaires habituels,
+        #  et on décide aléatoirement si le compte est dormant (pour les MULE_ACCOUNT).
+        #  Le résultat est stocké dans le pool d'utilisateurs.
         for i in range(n):
             alias   = "als_" + hashlib.md5(f"u{i}".encode()).hexdigest()[:10]
             p_type  = random.choices(p_types, weights=p_weights, k=1)[0]
@@ -402,12 +415,14 @@ class UserPool:
             )
 
         log.info("UserPool initialisé : %d utilisateurs.", n)
-
+    # Méthode de tirage aléatoire d'un utilisateur dans le pool,
+    #  avec une probabilité pondérée par la fréquence d'activité quotidienne de chaque utilisateur, 
+    # afin de simuler une activité réaliste dans le temps.
     def pick(self) -> UserState:
         users = list(self._pool.values())
         freqs = [u.freq_per_day for u in users]
         return random.choices(users, weights=freqs, k=1)[0]
-
+    # Permet de connaître la taille du pool d'utilisateurs, ce qui peut être utile pour le monitoring ou le debug.
     def __len__(self) -> int:
         return len(self._pool)
 
@@ -415,26 +430,32 @@ class UserPool:
 # ════════════════════════════════════════════════════════════════
 # HELPERS COMMUNS
 # ════════════════════════════════════════════════════════════════
-
+# Fonctions utilitaires communes à tous les scénarios, telles que la génération d'alias de bénéficiaires,
+#  le clamp des montants selon les profils, la génération de latences réalistes, la réinitialisation de l'état de scénario,
+#  et l'enregistrement des transactions dans l'historique de l'utilisateur.
 def _alias() -> str:
     return "als_" + uuid.uuid4().hex[:10]
 
-
+# Génère un alias de bénéficiaire, en choisissant parmi les bénéficiaires habituels de l'utilisateur 
+# avec une forte probabilité, ou en générant un nouvel alias aléatoire dans le cas contraire.
 def _beneficiary(user: UserState) -> str:
     if user.beneficiaries and random.random() < 0.72:
         return random.choice(user.beneficiaries)
     return _alias()
 
-
+# Clamp le montant généré pour qu'il soit cohérent avec le profil de l'utilisateur, en respectant les limites minimales et maximales définies pour ce profil.
 def _clamp(amount: float, profile: UserProfile) -> float:
     return max(profile.min_amount, min(profile.max_amount, amount))
 
-
+# Génère une latence réaliste pour une transaction normale, en se basant sur une latence nominale autour de 220ms
+#  avec un bruit gaussien pour simuler la variabilité naturelle du système.
 def _normal_latency() -> int:
     """Latence nominale : baseline autour de 220ms avec bruit gaussien."""
     return max(50, int(random.gauss(220, 55)))
 
-
+# Génère un pic de latence réaliste pour simuler des problèmes de performance ou des attaques ciblant la disponibilité,
+#  en partant de la baseline historique de l'utilisateur et en ajoutant un multiplicateur aléatoire élevé 
+#  créer un spike significatif, tout en conservant une certaine variabilité grâce à un bruit gaussien.
 def _realistic_latency_spike(user: UserState) -> int:
     """
     Génère un vrai pic de latence réaliste.
@@ -447,13 +468,17 @@ def _realistic_latency_spike(user: UserState) -> int:
     noise = random.gauss(0, sigma * 0.3)
     return max(1_500, int(mu * spike_multiplier + noise))
 
-
+# Réinitialise l'état de scénario de l'utilisateur, en remettant à zéro le scénario actif,
+#  l'étape du scénario, et les données associées, afin de revenir à un état normal après la fin d'un scénario frauduleux 
+# ou en cas d'erreur.
 def _reset(user: UserState) -> None:
     user.active_scenario = Scenario.NONE
     user.scenario_step   = 0
     user.scenario_data   = {}
 
-
+# Enregistre une transaction dans l'historique de l'utilisateur, en créant un objet TxRecord 
+# avec les informations pertinentes de la transaction (montant, statut, appareil, institution, pays, type de transaction,
+#  bénéficiaire, latence) et en l'ajoutant à la deque d'historique de l'utilisateur.
 def _record(user: UserState, tx: dict, now_ms: int) -> None:
     user.record(TxRecord(
         ts_ms       = now_ms,
@@ -467,7 +492,10 @@ def _record(user: UserState, tx: dict, now_ms: int) -> None:
         latency_ms  = tx["response_time_ms"],
     ))
 
-
+# Construit une transaction complète et cohérente avec les caractéristiques de l'utilisateur,
+#  le scénario actif, et les paramètres spécifiés (montant, appareil, type de transaction, statut, latence,
+#  bénéficiaire, pays, institution), en calculant les features dérivées (flags de nouveau device, cross-border, P2P, RTP)
+#  et en enregistrant la transaction dans l'historique de l'utilisateur.
 def _build_tx(
     user        : UserState,
     now_ms      : int,
@@ -524,6 +552,8 @@ class ScenarioEngine:
     """
 
     # ── Sélection ────────────────────────────────────────────────
+    # En fonction de l'état actuel de l'utilisateur (scénario actif, dormance, profil, etc.) 
+    # et du timestamp actuel, sélectionne le scénario à appliquer pour la prochaine transaction.
     def select(self, user: UserState, now: datetime) -> Scenario:
         # Scénario en cours → continuer
         if user.active_scenario != Scenario.NONE and user.scenario_step > 0:
@@ -539,6 +569,10 @@ class ScenarioEngine:
         return Scenario(random.choices(list(sw.keys()), weights=list(sw.values()), k=1)[0])
 
     # ── Dispatch ─────────────────────────────────────────────────
+    # En fonction du scénario sélectionné, appelle la méthode correspondante pour générer une transaction cohérente 
+    # avec ce scénario, en passant l'état de l'utilisateur et le timestamp actuel. 
+    # En cas d'erreur (scénario non implémenté ou problème dans la génération), 
+    # réinitialise l'état de scénario de l'utilisateur et génère une transaction normale.
     def execute(self, user: UserState, scenario: Scenario, now_ms: int) -> dict:
         user.active_scenario = scenario
         try:
@@ -560,6 +594,8 @@ class ScenarioEngine:
             return self._normal(user, now_ms)
 
     # ── NONE ─────────────────────────────────────────────────────
+    # Transaction normale, cohérente avec le profil de l'utilisateur
+    #  (montant, appareil, bénéficiaire, pays, institution, latence réaliste, etc.).
     def _normal(self, user: UserState, now_ms: int) -> dict:
         profile = PROFILES[user.profile_type]
         amount  = _clamp(random.gauss(user.avg_amount, user.stddev_amount), profile)
@@ -580,6 +616,8 @@ class ScenarioEngine:
         )
 
     # ── ACCOUNT_TAKEOVER ─────────────────────────────────────────
+    # Scénario de prise de contrôle de compte : une fois le scénario déclenché, on simule d'abord 1-2 transactions normales 
+    # pour crédibiliser la baseline, puis on génère une transaction frauduleuse avec les caractéristiques suivantes :
     # Nouvel appareil inconnu + pays à risque + montant × 8-20 + heure nocturne
     def _account_takeover(self, user: UserState, now_ms: int) -> dict:
         sd = user.scenario_data
@@ -635,7 +673,7 @@ class ScenarioEngine:
         # Timestamp resserré dans la fenêtre de 20s
         step_ms = sd["base_ms"] + (user.scenario_step - 1) * sd["interval_ms"]
         amount  = sd["amount"] * random.uniform(0.85, 1.15)
-
+        # Même appareil pour toutes les tx du burst (mais pas forcément connu, pour crédibiliser la fraude)
         tx = _build_tx(
             user=user, now_ms=step_ms,
             amount=amount,
@@ -947,7 +985,8 @@ class ScenarioEngine:
 # ════════════════════════════════════════════════════════════════
 # KAFKA CALLBACK
 # ════════════════════════════════════════════════════════════════
-
+# Callback de livraison pour le producteur Kafka, qui logue les succès et les échecs de livraison des messages,
+# en affichant les détails du message en cas de succès ou l'erreur en cas d'échec.
 def on_delivery(err, msg) -> None:
     if err:
         log.error("❌ Livraison échouée : %s", err)

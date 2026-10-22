@@ -1,20 +1,6 @@
-"""
-app.py  v2.0.0  ·  PI-SPI Fraud Detection Platform
-=====================================================
-NOUVEAUTÉS vs v1 :
-  1. MinIO branché pour l'historique persistant des alertes
-  2. Règles métier (rule_triggers, rule_score) affichées
-  3. Bug SHAP corrigé (f["shap"] → f["importance"])
-  4. Lecture features corrigée (stream/feast imbriqués)
-  5. Métriques /metrics alignées avec l'API v4.1
-  6. api_health() mis en cache (ttl=10s)
-  7. Auto-refresh monitoring (toutes les 30s)
-  8. Filtre par alias dans l'historique
-  9. gnn_active badge dans l'UI
-"""
-
 import io
 import json
+import os
 import time
 import uuid
 from datetime import datetime, timezone
@@ -31,12 +17,16 @@ from minio.error import S3Error
 # CONFIG
 # ════════════════════════════════════════════════════════════════
 
-API_URL        = "http://localhost:8000"
-MINIO_ENDPOINT = "localhost:9000"
-MINIO_ACCESS   = "minioadmin"
-MINIO_SECRET   = "minioadmin"
-ALERTS_BUCKET  = "pispi-alerts"   # bucket dédié aux alertes du dashboard
-RAW_BUCKET     = "pispi-raw"
+# Les valeurs par défaut correspondent aux noms des services Docker Compose.
+# Les variables d'environnement permettent aussi d'exécuter l'application hors Docker.
+API_URL = os.getenv("API_URL", "http://fraud-api:8000").rstrip("/")
+MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "minio:9000")
+MINIO_ACCESS = os.getenv("MINIO_ACCESS", "minioadmin")
+MINIO_SECRET = os.getenv("MINIO_SECRET", "minioadmin")
+ALERTS_BUCKET = os.getenv("ALERTS_BUCKET", "pispi-alerts")
+RAW_BUCKET = os.getenv("RAW_BUCKET", "pispi-raw")
+
+
 
 st.set_page_config(
     page_title="PI-SPI Fraud Detection",
@@ -162,62 +152,90 @@ def _load_raw_stats() -> dict:
 # SCÉNARIOS
 # ════════════════════════════════════════════════════════════════
 
-SCENARIOS: Dict[str, Dict[str, Any]] = {
+SCENARIOS: Dict[str, Dict[str, Any]] ={
     "🟢 Transaction normale": {
-        "payer_alias":"als_normal_001","receiver_alias":"als_recv_001",
-        "amount":15000,"issuer_country":"SN","receiver_country":"SN",
-        "issuer_institution":"WAVE-SN","receiver_institution":"WAVE-SN",
-        "device":"ANDROID","transaction_type":"P2P","response_time_ms":220,
+        "payer_alias"   : "als_c5671f46e2",   
+        "receiver_alias": "als_b0db9e7d51",
+        "amount"        : 15000.0,
+        "issuer_country": "SN",
+        "receiver_country": "SN",
+        "device"        : "ANDROID",
+        "transaction_type": "P2P",
     },
     "🔴 Burst Fraud": {
-        "payer_alias":"als_burst_001","receiver_alias":"als_recv_burst",
-        "amount":4500,"issuer_country":"SN","receiver_country":"SN",
-        "issuer_institution":"ORANGE-MONEY-SN","receiver_institution":"WAVE-SN",
-        "device":"ANDROID","transaction_type":"P2P","response_time_ms":85,
-    },
-    "🔴 Retry Fraud": {
-        "payer_alias":"als_retry_001","receiver_alias":"als_recv_retry",
-        "amount":22000,"issuer_country":"SN","receiver_country":"SN",
-        "issuer_institution":"SGBS-SN","receiver_institution":"BDM-ML",
-        "device":"ANDROID","transaction_type":"TRANSFER","response_time_ms":5200,
-    },
-    "🔴 Cross Border Fraud": {
-        "payer_alias":"als_cross_001","receiver_alias":"als_recv_cross",
-        "amount":750000,"issuer_country":"SN","receiver_country":"NG",
-        "issuer_institution":"WAVE-SN","receiver_institution":"ZENITH-NG",
-        "device":"WEB","transaction_type":"TRANSFER","response_time_ms":1100,
-    },
-    "🔴 Account Takeover": {
-        "payer_alias":"als_ato_001","receiver_alias":"als_recv_ato",
-        "amount":620000,"issuer_country":"SN","receiver_country":"GH",
-        "issuer_institution":"WAVE-SN","receiver_institution":"GTB-NG",
-        "device":"UNKNOWN_ANDROID","transaction_type":"TRANSFER","response_time_ms":580,
-        "new_device_flag":1,
+        "payer_alias"   : "als_d96eb7dae1",   
+        "receiver_alias": "als_4dabfc9140",
+        "amount"        : 22000.0,
+        "issuer_country": "SN",
+        "receiver_country": "SN",
+        "device"        : "ANDROID",
+        "transaction_type": "P2P",
     },
     "🔴 Mule Account": {
-        "payer_alias":"als_mule_001","receiver_alias":"als_collecteur_hub",
-        "amount":45000,"issuer_country":"SN","receiver_country":"SN",
-        "issuer_institution":"ORANGE-MONEY-SN","receiver_institution":"WAVE-SN",
-        "device":"FEATURE_PHONE","transaction_type":"P2P","response_time_ms":310,
+        "payer_alias"   : "als_5da479bc7c",   
+        "receiver_alias": "als_50514661be",
+        "amount"        : 45000.0,
+        "issuer_country": "SN",
+        "receiver_country": "SN",
+        "device"        : "ANDROID",
+        "transaction_type": "P2P",
+    },
+    "🔴 Account Takeover": {
+        "payer_alias"   : "als_6cd6002b68",   # HIGH_RISK_USER — 418 tx
+        "receiver_alias": "als_ae44b2cd57",
+        "amount"        : 620000.0,
+        "issuer_country": "SN",
+        "receiver_country": "GH",
+        "device"        : "UNKNOWN_ANDROID",
+        "transaction_type": "TRANSFER",
+        "response_time_ms": 1000.0,
+        "new_device_flag": 1,
+    },
+    "🔴 Cross Border Fraud": {
+        "payer_alias"   : "als_adef31858e",   
+        "receiver_alias": "als_6f58b06c8c",
+        "amount"        : 750000.0,
+        "issuer_country": "SN",
+        "receiver_country": "NG",
+        "device"        : "IOS",
+        "transaction_type": "TRANSFER",
+        "is_cross_border": 1,
     },
     "🔴 Structuring": {
-        "payer_alias":"als_struct_001","receiver_alias":"als_recv_struct",
-        "amount":95000,"issuer_country":"SN","receiver_country":"SN",
-        "issuer_institution":"WAVE-SN","receiver_institution":"WAVE-SN",
-        "device":"IOS","transaction_type":"P2P","response_time_ms":180,
+        "payer_alias"   : "als_4dabfc9140",  
+        "receiver_alias": "als_d96eb7dae1",
+        "amount"        : 48000.0,
+        "issuer_country": "SN",
+        "receiver_country": "SN",
+        "device"        : "ANDROID",
+        "transaction_type": "P2P",
+    },
+    "🔴 High Net Worth": {
+        "payer_alias"   : "als_4dae8edd4b",  
+        "receiver_alias": "als_5f4eb58139",
+        "amount"        : 850000.0,
+        "issuer_country": "CI",
+        "receiver_country": "CI",
+        "device"        : "IOS",
+        "transaction_type": "TRANSFER",
     },
     "🟡 Sleeper Account": {
-        "payer_alias":"als_sleeper_001","receiver_alias":"als_recv_sleeper",
-        "amount":380000,"issuer_country":"SN","receiver_country":"CI",
-        "issuer_institution":"SGBS-SN","receiver_institution":"MTN-MOMO-CI",
-        "device":"IOS","transaction_type":"TRANSFER","response_time_ms":450,
+        "payer_alias"   : "als_aea4fa2f74",   
+        "receiver_alias": "als_e2dba06490",
+        "amount"        : 120000.0,
+        "issuer_country": "SN",
+        "receiver_country": "SN",
+        "device"        : "FEATURE_PHONE",
+        "transaction_type": "P2P",
     },
 }
 
 # ════════════════════════════════════════════════════════════════
 # SESSION STATE
 # ════════════════════════════════════════════════════════════════
-
+# Initialisation du session state de Streamlit pour stocker le résultat du dernier scoring, 
+# les alertes de la session, le total de transactions scorées, le total de fraudes détectées, 
+# le formulaire en cours, et le filtre d'alias pour l'historique.
 for k, v in {
     "last_result"   : None,
     "session_alerts": [],      # alertes de la session (RAM)
@@ -232,7 +250,7 @@ for k, v in {
 # ════════════════════════════════════════════════════════════════
 # HELPERS API
 # ════════════════════════════════════════════════════════════════
-
+# Ces fonctions facilitent les appels à l'API de scoring, la gestion des alertes, et la lecture des features.
 @st.cache_data(ttl=10)
 def api_health() -> Optional[dict]:
     try:
@@ -256,7 +274,7 @@ def risk_color(level: str) -> str:
 # ════════════════════════════════════════════════════════════════
 # CHARTS
 # ════════════════════════════════════════════════════════════════
-
+# Ces fonctions génèrent des graphiques Plotly pour visualiser le score de fraude, les importances SHAP, les tendances, etc.
 def gauge_chart(score: float, threshold: float) -> go.Figure:
     color = "#ff4757" if score >= threshold else "#ffa502" if score >= threshold * 0.7 else "#2ed573"
     fig = go.Figure(go.Indicator(
@@ -297,7 +315,9 @@ def bar_chart(xgb: float, iso: float, gnn: float, final: float) -> go.Figure:
     )
     return fig
 
-
+# Graphe SHAP — affiche les 8 features les plus importantes 
+# avec leur valeur SHAP (importance) et une couleur rouge/vert 
+# selon l'impact sur le score de fraude.
 def shap_chart(top_features: List[dict]) -> go.Figure:
     """Graphe SHAP — lit 'importance' (champ API v4.1)."""
     if not top_features:
@@ -322,7 +342,8 @@ def shap_chart(top_features: List[dict]) -> go.Figure:
     )
     return fig
 
-
+# Graphe de tendance des scores de fraude pour les dernières transactions du même alias,
+# afin de détecter des patterns de montée en puissance (ex: burst fraud).
 def trend_chart(alerts: list) -> go.Figure:
     if len(alerts) < 2:
         return go.Figure()
@@ -351,7 +372,11 @@ def trend_chart(alerts: list) -> go.Figure:
 # ════════════════════════════════════════════════════════════════
 # SIDEBAR
 # ════════════════════════════════════════════════════════════════
-
+# Le sidebar contient :
+# - un header avec le logo et le nom de la plateforme 
+# - un indicateur de santé de l'API et de MinIO
+# - une section de boutons pour pré-remplir le formulaire avec des scénarios types (fraude normale, burst fraud, mule account, etc.)
+# - un formulaire pour saisir les détails d'une transaction à scorer (alias, montant, pays, etc.)
 with st.sidebar:
     st.markdown("""
     <div style="display:flex;align-items:center;gap:12px;padding:8px 0 20px">
@@ -400,13 +425,18 @@ with st.sidebar:
         issuer_country = st.selectbox("issuer_country", uemoa,
             index=uemoa.index(f.get("issuer_country","SN")) if f.get("issuer_country","SN") in uemoa else 0)
     with c2:
-        all_countries = ["SN","CI","ML","BF","BJ","TG","NG","GH","CM","FR","US"]
+        all_countries = ["SN","CI","ML","BF","BJ","TG","GW","NE","NG","GH","CM","FR","US", "CN", "AE"]
         rc = f.get("receiver_country","SN")
         receiver_country = st.selectbox("receiver_country", all_countries,
             index=all_countries.index(rc) if rc in all_countries else 0)
 
     c3,c4 = st.columns(2)
-    institutions = ["WAVE-SN","ORANGE-MONEY-SN","SGBS-SN","MTN-MOMO-CI","BDM-ML","ZENITH-NG","GTB-NG"]
+    institutions = ["CBAO-SN", "SGBS-SN", "BIS-SN", "WAVE-SN", "ORANGE-MONEY-SN", "FREE-MONEY-SN",
+                    "MTN-MOMO-CI", "ORANGE-MONEY-CI", "WAVE-CI", "SOGEMAT-ML", "BMS-ML", "BDM-ML",
+                     "CBI-BF", "MOOV-BF","BDU-GW", "ORANGE-GW","ORANGE-BF","BOA-BJ", 
+                     "MTN-BJ", "MOOV-BJ","ORANGE-BJ","ORANGE-TG","MOOV-TG","ORANGE-GW","ORANGE-NE",
+                     "BIA-NE", "AIRTEL-NE","MOBILE-MONEY-CM","ORANGE-CM","WAVE-CM","ORANGE-FR","WAVE-FR",
+                     "ORANGE-US","WAVE-US","ORANGE-CN","WAVE-CN","ZENITH-NG", "GTB-NG", "UBA-NG", "ACCESS-NG"]
     with c3:
         ii = f.get("issuer_institution","WAVE-SN")
         issuer_institution = st.selectbox("issuer_inst.", institutions,
@@ -417,7 +447,7 @@ with st.sidebar:
             index=institutions.index(ri) if ri in institutions else 0)
 
     c5,c6 = st.columns(2)
-    devices   = ["ANDROID","IOS","WEB","USSD","FEATURE_PHONE","UNKNOWN_ANDROID"]
+    devices   = ["ANDROID","IOS","WEB","USSD","UNKNOWN_ANDROID"]
     tx_types  = ["P2P","TRANSFER","RTP","P2M","P2G"]
     with c5:
         d = f.get("device","ANDROID")
@@ -449,7 +479,9 @@ st.markdown("""
 # ════════════════════════════════════════════════════════════════
 # SCORING
 # ════════════════════════════════════════════════════════════════
-
+# Lorsqu'on clique sur "Scorer", on construit le payload à partir du formulaire,
+# on appelle l'API /score, puis on affiche le résultat et on stocke l'alerte 
+# dans la session et dans MinIO si c'est une fraude ou une règle déclenchée.
 if score_clicked:
     payload = {
         "payer_alias"         : payer_alias,
@@ -509,7 +541,9 @@ tab_score, tab_monitor, tab_history = st.tabs([
 ])
 
 # ══════════════════════ TAB SCORING ════════════════════════════
-
+# Affiche le résultat du scoring : niveau de risque, score final, scores ML et règles,
+# règles métier déclenchées, explications SHAP, et tendance des scores précédents 
+# pour le même alias.
 with tab_score:
     res = st.session_state.last_result
 
@@ -643,7 +677,9 @@ with tab_score:
 
 
 # ══════════════════════ TAB MONITORING ═════════════════════════
-
+# Affiche les métriques globales de la session en cours (transactions scorées, fraudes détectées, taux de fraude),
+# les métriques de l'API (transactions en mémoire, alertes dernière heure, statut GNN), 
+# les règles métier les plus déclenchées, et la liste des alertes de la session avec leurs détails.
 with tab_monitor:
     total  = st.session_state.total_scored
     fraud  = st.session_state.total_fraud
@@ -712,7 +748,8 @@ with tab_monitor:
 
 
 # ══════════════════════ TAB HISTORIQUE MINIO ═══════════════════
-
+# Affiche les alertes persistantes stockées dans MinIO (fraudes et règles déclenchées),
+# avec des filtres par alias et niveau de risque, et la possibilité d'exporter les données au format CSV.
 with tab_history:
     st.markdown("""
     <div style="font-family:'DM Mono';font-size:10px;letter-spacing:.1em;color:#5a6478;

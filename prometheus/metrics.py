@@ -25,7 +25,7 @@ from prometheus_client import Counter, Gauge, Histogram, make_asgi_app
 # ════════════════════════════════════════════════════════════════
 # A. SCORING
 # ════════════════════════════════════════════════════════════════
-
+# Les métriques sont mises à jour à chaque scoring dans /score, via record_scoring().
 transactions_total = Counter(
     "pispi_transactions_total",
     "Nombre total de transactions scorées",
@@ -47,7 +47,8 @@ fraud_rate_gauge = Gauge("pispi_fraud_rate",        "Taux de fraude actuel")
 # ════════════════════════════════════════════════════════════════
 # B. DÉCISIONS
 # ════════════════════════════════════════════════════════════════
-
+# Les métriques suivent les décisions prises par le système, notamment la répartition par niveau de risque,
+# le nombre de transactions légitimes (score bas et aucune règle déclenchée), et les règles métier déclenchées.
 risk_level_total = Counter(
     "pispi_risk_level_total",
     "Décisions par niveau de risque",
@@ -61,7 +62,7 @@ legitimate_total = Counter(
 # ════════════════════════════════════════════════════════════════
 # C. RÈGLES MÉTIER
 # ════════════════════════════════════════════════════════════════
-
+# Les métriques suivent les règles métier déclenchées, leur score, et le nombre de transactions déclenchant au moins une règle.
 rule_triggered_total = Counter(
     "pispi_rule_triggered_total",
     "Déclenchements par règle métier",
@@ -85,7 +86,8 @@ rule_alert_total = Counter(
 # ════════════════════════════════════════════════════════════════
 # D. MODÈLES
 # ════════════════════════════════════════════════════════════════
-
+# Les métriques suivent les scores moyens des différents modèles (XGBoost, IsolationForest, GNN),
+#  ainsi que la latence de scoring end-to-end et la latence des appels à Feast/Redis.
 xgb_score_avg = Gauge("pispi_xgb_score_avg",  "Score moyen XGBoost")
 iso_score_avg = Gauge("pispi_iso_score_avg",  "Score moyen IsolationForest")
 gnn_score_avg = Gauge("pispi_gnn_score_avg",  "Score moyen GNN")
@@ -109,7 +111,8 @@ feast_latency = Histogram(
 # ════════════════════════════════════════════════════════════════
 # E. FEATURES STREAM
 # ════════════════════════════════════════════════════════════════
-
+# Les métriques suivent les valeurs moyennes de certaines features clés extraites du flux de transactions,
+# sur une fenêtre glissante de 100 transactions, pour détecter les changements de comportement en temps réel.
 feature_tx_count_1min_avg  = Gauge("pispi_feature_tx_count_1min_avg",  "Moyenne tx_count_1min")
 feature_burst_score_avg    = Gauge("pispi_feature_burst_score_avg",    "Moyenne burst_score")
 feature_amount_zscore_avg  = Gauge("pispi_feature_amount_zscore_avg",  "Moyenne amount_zscore_short_window")
@@ -120,7 +123,8 @@ feature_cross_border_ratio = Gauge("pispi_feature_cross_border_ratio", "Proporti
 # ════════════════════════════════════════════════════════════════
 # F. INFRASTRUCTURE
 # ════════════════════════════════════════════════════════════════
-
+# Les métriques suivent la disponibilité de Feast/Redis, l'état du modèle GNN, et le nombre d'alias et de transactions en mémoire,
+#  pour monitorer la santé de l'infrastructure et détecter les problèmes potentiels.
 feast_available_gauge = Gauge("pispi_feast_available",    "1 si Feast/Redis disponible")
 gnn_active_gauge      = Gauge("pispi_gnn_active",         "1 si GNN chargé et actif")
 aliases_in_memory     = Gauge("pispi_aliases_in_memory",  "Alias avec historique en RAM")
@@ -131,14 +135,15 @@ scoring_errors_total  = Counter("pispi_scoring_errors_total", "Erreurs scoring")
 # ════════════════════════════════════════════════════════════════
 # G. MINIO
 # ════════════════════════════════════════════════════════════════
-
+# Les métriques suivent le nombre d'alertes sauvegardées dans MinIO, et les erreurs associées.
 minio_alerts_saved_total = Counter("pispi_minio_alerts_saved_total", "Alertes sauvegardées MinIO")
 minio_errors_total       = Counter("pispi_minio_errors_total",       "Erreurs MinIO")
 
 # ════════════════════════════════════════════════════════════════
 # FENÊTRE GLISSANTE INTERNE
 # ════════════════════════════════════════════════════════════════
-
+# Ces structures de données permettent de calculer des moyennes glissantes 
+# sur les dernières 100 transactions scorées, pour certaines métriques clés.
 _WINDOW = 100
 _lock                = threading.Lock()
 _scores_window       : deque = deque(maxlen=_WINDOW)
@@ -154,7 +159,8 @@ _cross_border_window : deque = deque(maxlen=_WINDOW)
 _total_scored : int = 0
 _total_fraud  : int = 0
 
-
+# Fonction utilitaire pour calculer la moyenne d'une deque  
+# (double-ended queue: est un fichier à double entrée) de floats
 def _avg(d: deque) -> float:
     return sum(d) / len(d) if d else 0.0
 
@@ -162,7 +168,8 @@ def _avg(d: deque) -> float:
 # ════════════════════════════════════════════════════════════════
 # FONCTIONS PUBLIQUES
 # ════════════════════════════════════════════════════════════════
-
+# Ces fonctions doivent être appelées dans fraud_api.py pour enregistrer les métriques après chaque scoring,
+#  appel Feast, ou sauvegarde MinIO.
 def record_scoring(tx: dict, result: dict, latency: float) -> None:
     """Met à jour toutes les métriques après un scoring."""
     global _total_scored, _total_fraud
@@ -231,14 +238,21 @@ def record_scoring(tx: dict, result: dict, latency: float) -> None:
         feature_failure_rate_avg.set(_avg(_failure_window))
         feature_cross_border_ratio.set(_avg(_cross_border_window))
 
-
+# ════════════════════════════════════════════════════════════════
+# F. FEAST  
+# ════════════════════════════════════════════════════════════════
+# Cette fonction doit être appelée autour de _get_feast_features() pour mesurer la latence et les erreurs associées.
 def record_feast_call(latency: float, success: bool) -> None:
     """Enregistre un appel Feast. Appeler autour de _get_feast_features()."""
     feast_latency.observe(latency)
     if not success:
         feast_errors_total.inc()
 
-
+# ════════════════════════════════════════════════════════════════
+# MINIO ALERTS
+# ════════════════════════════════════════════════════════════════
+# Ces fonctions permettent de suivre le nombre d'alertes sauvegardées dans MinIO, et les erreurs associées. 
+# Appeler record_minio_alert(success) dans _save_alert_minio().
 def record_minio_alert(success: bool) -> None:
     """Enregistre une sauvegarde MinIO. Appeler dans _save_alert_minio()."""
     if success:
@@ -246,7 +260,8 @@ def record_minio_alert(success: bool) -> None:
     else:
         minio_errors_total.inc()
 
-
+# scoring_errors_total peut être incrémenté dans /score en cas d'exception non gérée, 
+# ou de résultat incohérent (ex: pas de fraud_score).
 def update_infra_gauges(
     feast_ok: bool,
     gnn_ok: bool,
@@ -259,7 +274,10 @@ def update_infra_gauges(
     aliases_in_memory.set(n_aliases)
     tx_in_memory.set(n_tx_memory)
 
-
+# ════════════════════════════════════════════════════════════════
+# SETUP MONITORING                          
+# ════════════════════════════════════════════════════════════════
+# Cette fonction monte l'app ASGI de Prometheus sur /metrics. Appeler setup_monitoring(app) après la création de l'app FastAPI.
 def setup_monitoring(app) -> None:
     """Monte /metrics sur l'app FastAPI. Appeler après app = FastAPI(...)."""
     app.mount("/metrics", make_asgi_app())

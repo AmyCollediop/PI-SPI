@@ -74,7 +74,7 @@ Kafka (transactions)
 | Message broker | Apache Kafka 7.5 |
 | Stockage objet | MinIO |
 | Feature store | Feast + Redis |
-| Orchestration | Apache Airflow 2.8 |
+| Orchestration | Apache Airflow 2.10 |
 | ML | XGBoost + Scikit-learn + PyTorch Geometric |
 | API | FastAPI 0.100+ |
 | Dashboard | Streamlit |

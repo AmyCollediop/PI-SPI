@@ -5,7 +5,14 @@ Correction du MinIO writer :
   - Suppression de save_to_minio() (1 fichier/tx → crash + surcharge)
   - Remplacement par MinIOWriter avec buffer + flush batch (500 tx ou 30s)
   - Ajout de l'import time manquant
-  - Tout le reste inchangé (features, règles, Feast push)
+    - Log du total de tx écrites dans MinIO
+Amélioration de la robustesse du push vers Feast :
+  - Ajout d'une vérification des colonnes attendues avant le push
+    - Log des erreurs de push sans faire planter le process
+Règles métier :
+  - Ajout de 2 règles supplémentaires : RTP_BURST et NEW_DEVICE
+    - RTP_BURST : transactions RTP avec plus de 5 tx dans la dernière minute
+    - NEW_DEVICE : transaction avec un nouveau device et montant > 50k
 """
 
 from __future__ import annotations
@@ -58,88 +65,98 @@ logger = logging.getLogger("stream_processor")
 # ════════════════════════════════════════════════════════════════
 # ÉTAT EN MÉMOIRE
 # ════════════════════════════════════════════════════════════════
-
+# Historique des transactions par alias, limité aux 500 dernières pour éviter une croissance infinie de la mémoire.
+# Chaque transaction est un dict avec les champs nécessaires au calcul des features et à la détection de fraude.
 state: Dict[str, Deque[Dict[str, Any]]] = defaultdict(lambda: deque(maxlen=500))
 
 # ════════════════════════════════════════════════════════════════
 # MINIO WRITER  (buffer + flush batch)
 # ════════════════════════════════════════════════════════════════
-
+# MinIOWriter gère un buffer en mémoire des transactions à écrire, 
+# et effectue un flush vers MinIO soit lorsque le buffer atteint une taille définie (MINIO_BATCH_SIZE), 
+# soit lorsqu'un certain temps s'est écoulé depuis le dernier flush (MINIO_FLUSH_INTERVAL).
+#  Les fichiers sont écrits au format JSON avec un objet par ligne, dans un chemin structuré par date/heure 
+# pour faciliter l'organisation et la récupération ultérieure.
 class MinIOWriter:
-    """
-    Buffer en mémoire → flush toutes les MINIO_BATCH_SIZE tx
-    ou toutes les MINIO_FLUSH_INTERVAL secondes.
 
-    Chemin : pispi-raw/YYYY/MM/DD/HH/batch_<uuid>.json
-    Format : JSON, 1 objet par ligne (compatible build_training_dataset2.py)
-    """
-
-    def __init__(self, client: Minio, bucket: str,
-                 batch_size: int, flush_interval: float) -> None:
-        self._client         = client
-        self._bucket         = bucket
-        self._batch_size     = batch_size
+    def __init__(self, client, bucket, batch_size, flush_interval):
+        self._client = client
+        self._bucket = bucket
+        self._batch_size = batch_size
         self._flush_interval = flush_interval
-        self._buffer         : List[dict] = []
-        self._last_flush     : float      = time.monotonic()
-        self._total_written  : int        = 0
-        self._ensure_bucket()
+        self._buffer = []
+        self._last_flush = time.monotonic()
+        self._total_written = 0
 
-    def _ensure_bucket(self) -> None:
-        try:
-            if not self._client.bucket_exists(self._bucket):
-                self._client.make_bucket(self._bucket)
-                logger.info("Bucket créé : %s", self._bucket)
-        except S3Error as e:
-            logger.error("Erreur création bucket : %s", e)
-
-    def add(self, tx: dict) -> None:
+    def add(self, tx):
         self._buffer.append(tx)
+
         elapsed = time.monotonic() - self._last_flush
-        if len(self._buffer) >= self._batch_size or elapsed >= self._flush_interval:
+
+        if (
+            len(self._buffer) >= self._batch_size
+            or elapsed >= self._flush_interval
+        ):
             self.flush()
 
-    def flush(self) -> None:
+    def flush_if_due(self):
+        elapsed = time.monotonic() - self._last_flush
+
+        if self._buffer and elapsed >= self._flush_interval:
+            self.flush()
+
+    def flush(self):
         if not self._buffer:
-            self._last_flush = time.monotonic()
             return
 
-        batch        = self._buffer[:]
+        batch = self._buffer[:]
         self._buffer = []
         self._last_flush = time.monotonic()
 
-        now  = datetime.now(timezone.utc)
-        path = f"{now.strftime('%Y/%m/%d/%H')}/batch_{uuid.uuid4().hex[:12]}.json"
+        now = datetime.now(timezone.utc)
 
-        content = "\n".join(json.dumps(tx, ensure_ascii=False) for tx in batch)
-        data    = content.encode("utf-8")
+        path = (
+            f"{now.strftime('%Y/%m/%d/%H')}/"
+            f"batch_{uuid.uuid4().hex[:12]}.json"
+        )
+
+        content = "\n".join(
+            json.dumps(tx, ensure_ascii=False)
+            for tx in batch
+        )
+
+        data = content.encode("utf-8")
 
         try:
             self._client.put_object(
-                bucket_name  = self._bucket,
-                object_name  = path,
-                data         = io.BytesIO(data),
-                length       = len(data),
-                content_type = "application/json",
+                bucket_name=self._bucket,
+                object_name=path,
+                data=io.BytesIO(data),
+                length=len(data),
+                content_type="application/json",
             )
+
             self._total_written += len(batch)
+
             logger.info(
                 "MinIO flush : %d tx → %s (total=%d)",
-                len(batch), path, self._total_written,
+                len(batch),
+                path,
+                self._total_written,
             )
+
         except S3Error as e:
             logger.error("Erreur MinIO flush : %s", e)
-            self._buffer = batch + self._buffer   # retry au prochain flush
+            self._buffer = batch + self._buffer
 
     @property
-    def total_written(self) -> int:
+    def total_written(self):
         return self._total_written
-
-
 # ════════════════════════════════════════════════════════════════
 # UTILS
 # ════════════════════════════════════════════════════════════════
-
+# Fonction utilitaire pour calculer le z-score d'une valeur par rapport à une liste de valeurs historiques,
+#  en gérant les cas où il y a moins de 2 valeurs ou un écart-type nul pour éviter les divisions par zéro.
 def _zscore(values: List[float], current: float) -> float:
     if len(values) < 2:
         return 0.0
@@ -147,7 +164,9 @@ def _zscore(values: List[float], current: float) -> float:
     std = float(np.std(values))
     return 0.0 if std == 0.0 else round((current - mu) / std, 4)
 
-
+# Fonction utilitaire pour calculer l'entropie de Shannon d'une liste de valeurs catégorielles,
+#  en utilisant les probabilités de chaque catégorie 
+# et en ajoutant une petite constante pour éviter les log(0) lorsque les probabilités sont très faibles.
 def _shannon_entropy(values: List[str]) -> float:
     if not values:
         return 0.0
@@ -158,7 +177,10 @@ def _shannon_entropy(values: List[str]) -> float:
 # ════════════════════════════════════════════════════════════════
 # FEATURE COMPUTATION  (21 stream features — inchangé v4)
 # ════════════════════════════════════════════════════════════════
-
+# compute_features() calcule les 21 features temps réel à partir de la transaction courante
+#  et de l'historique en mémoire de l'alias,
+#  en utilisant des fenêtres temporelles pour les features de fréquence, des calculs de z-score pour les features d'anomalie, 
+# et des comparaisons avec la dernière transaction pour les features de changement de comportement.
 def compute_features(tx: Dict[str, Any]) -> Dict[str, Any]:
     alias  = tx["payer_alias"]
     hist   = list(state[alias])
@@ -244,23 +266,40 @@ def compute_features(tx: Dict[str, Any]) -> Dict[str, Any]:
 
 
 # ════════════════════════════════════════════════════════════════
-# PUSH FEAST  (inchangé v4 — robuste)
+# PUSH FEAST  
 # ════════════════════════════════════════════════════════════════
-
-def _push_to_feast(store: FeatureStore, features: Dict[str, Any]) -> None:
-    df = pd.DataFrame([features])
+def get_expected_stream_cols(store: FeatureStore) -> List[str]:
+    """
+    Charge une seule fois les colonnes attendues par Feast.
+    """
     try:
-        expected_cols = [
+        return [
             f.name
             for fv in store.list_feature_views()
-            if fv.stream_source and fv.stream_source.name == "stream_features_source"
+            if fv.stream_source
+            and fv.stream_source.name == "stream_features_source"
             for f in fv.features
         ]
-        for col in expected_cols:
-            if col not in df.columns:
-                df[col] = 0
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(
+            "Impossible de charger les colonnes Feast attendues : %s",
+            e,
+        )
+        return []
+    
+# _push_to_feast() gère le push des features calculées vers Feast, en convertissant les features en DataFrame,
+def _push_to_feast(
+    store: FeatureStore,
+    features: Dict[str, Any],
+    expected_cols: List[str],
+) -> None:
+
+    df = pd.DataFrame([features])
+
+    for col in expected_cols:
+        if col not in df.columns:
+            df[col] = 0
+
     try:
         store.push("stream_features_source", df)
     except Exception as e:
@@ -268,9 +307,9 @@ def _push_to_feast(store: FeatureStore, features: Dict[str, Any]) -> None:
 
 
 # ════════════════════════════════════════════════════════════════
-# RULE ENGINE  (inchangé v4 + RTP_BURST et NEW_DEVICE)
+# RULE ENGINE  ( v4 + RTP_BURST et NEW_DEVICE)
 # ════════════════════════════════════════════════════════════════
-
+# Règles métier pour la détection de fraude en temps réel, basées sur les features calculées.
 RULES: List[Tuple[str, Any]] = [
     ("BURST",            lambda tx, f: f["tx_count_1min"] > 10),
     ("LATENCY",          lambda tx, f: f["latency_spike_flag"] == 1),
@@ -293,17 +332,50 @@ RULES: List[Tuple[str, Any]] = [
                                        and tx["amount"] > 50_000),
 ]
 
-
+# detect_fraud() applique les règles métier sur une transaction et ses features, 
+# et retourne la liste des raisons de suspicion et un score de risque calculé à partir du nombre de règles déclenchées.
 def detect_fraud(tx: Dict[str, Any], f: Dict[str, Any]) -> Tuple[List[str], int]:
     reasons = [name for name, rule in RULES if rule(tx, f)]
     score   = min(len(reasons) * 20, 100)
     return reasons, score
 
+# ==================================================================
+# API CALL
+# ==================================================================
 
+import requests
+
+API_URL = "http://localhost:8000"
+
+def _score_transaction(tx: dict) -> None:
+    """Envoie la transaction à l'API pour construire l'historique."""
+    try:
+        payload = {
+            "payer_alias"          : tx.get("payer_alias", ""),
+            "receiver_alias"       : tx.get("receiver_alias", ""),
+            "amount"               : float(tx.get("amount", 0)),
+            "timestamp"            : int(tx.get("timestamp", 0)),
+            "device"               : tx.get("device", "ANDROID"),
+            "transaction_type"     : tx.get("transaction_type", "P2P"),
+            "issuer_institution"   : tx.get("issuer_institution", ""),
+            "receiver_institution" : tx.get("receiver_institution", ""),
+            "issuer_country"       : tx.get("issuer_country", "SN"),
+            "receiver_country"     : tx.get("receiver_country", "SN"),
+            "status"               : tx.get("status", "SUCCESS"),
+            "response_time_ms"     : float(tx.get("response_time_ms", 250)),
+            "new_device_flag"      : int(tx.get("new_device_flag", 0)),
+            "is_cross_border"      : int(tx.get("is_cross_border", 0)),
+            "is_p2p"               : int(tx.get("is_p2p", 0)),
+            "is_rtp"               : int(tx.get("is_rtp", 0)),
+        }
+        requests.post(f"{API_URL}/score", json=payload, timeout=2)
+    except Exception:
+        pass   # ne pas bloquer le stream si l'API est down
 # ════════════════════════════════════════════════════════════════
 # MAIN
 # ════════════════════════════════════════════════════════════════
-
+# run() est la fonction principale qui initialise les consommateurs Kafka, le producteur, le client MinIO et le store Feast,
+#  puis entre dans une boucle de traitement des messages du topic d'entrée,
 def run() -> None:
 
     consumer = Consumer({
@@ -313,6 +385,17 @@ def run() -> None:
     })
     producer = Producer({"bootstrap.servers": KAFKA_BOOTSTRAP})
     store    = FeatureStore(repo_path=FEAST_REPO)
+
+    # =====================================================
+    # Charger UNE SEULE FOIS les colonnes attendues par Feast
+    # =====================================================
+    expected_cols = get_expected_stream_cols(store)
+
+    logger.info(
+        "Feast : %d colonnes attendues chargées.",
+        len(expected_cols)
+    )
+
 
     # MinIO writer avec buffer batch
     minio_writer = MinIOWriter(
@@ -343,7 +426,7 @@ def run() -> None:
         msg = consumer.poll(1.0)
 
         if msg is None:
-            minio_writer.flush()   # flush sur timeout (garantit les 30s)
+            minio_writer.flush_if_due()  # flush sur timeout (garantit les 30s)
             continue
 
         if msg.error():
@@ -366,12 +449,13 @@ def run() -> None:
             features = compute_features(tx)
 
             # ── 2. Feast (Redis online store) ─────────────────────
-            _push_to_feast(store, features)
+            _push_to_feast(store, features, expected_cols)
 
             # ── 3. MinIO (batch ML / Airflow) ─────────────────────
             minio_writer.add(tx)
-
-            # ── 4. Détection temps réel ───────────────────────────
+            # ── 4. Alimenter l'historique API ─────────────────────
+            _score_transaction(tx)
+            # ── 5. Détection temps réel ───────────────────────────
             reasons, score = detect_fraud(tx, features)
             if reasons:
                 alert = {

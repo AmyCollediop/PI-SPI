@@ -95,7 +95,8 @@ TRAINING_MODE = "strict"  # ← changer en "full" pour comparaison
 # ════════════════════════════════════════════════════════════════
 # CHARGEMENT
 # ════════════════════════════════════════════════════════════════
-
+# Charger le dataset complet, vérifier la présence des features, 
+# et sélectionner les features selon le mode choisi (full vs strict).
 def load_data():
     logger.info("📥 Chargement : %s", DATA_PATH)
     df = pd.read_parquet(DATA_PATH)
@@ -186,7 +187,10 @@ def resample_train(train: pd.DataFrame, target: float = 0.20) -> pd.DataFrame:
 # ════════════════════════════════════════════════════════════════
 # GRAPHE
 # ════════════════════════════════════════════════════════════════
-
+# Construire un graphe de transactions pour le GNN :
+# - Les nœuds sont les alias (payer_alias et receiver_alias)
+# - Les arêtes sont les transactions entre eux (payer → receiver)
+# - Les features de nœuds sont les moyennes des features comportementales sur les transactions
 def build_graph(df: pd.DataFrame, features: list):
     df = df.copy()
     if "receiver_alias" not in df.columns:
@@ -219,19 +223,21 @@ def build_graph(df: pd.DataFrame, features: list):
 # ════════════════════════════════════════════════════════════════
 # GNN
 # ════════════════════════════════════════════════════════════════
-
+# Un GNN simple (GraphSAGE) pour apprendre des représentations d'alias à partir de leur comportement 
+# et de leur position dans le graphe de transactions.
 class GraphSAGE(torch.nn.Module):
     def __init__(self, in_dim: int, hidden: int = 64):
         super().__init__()
         self.conv1 = SAGEConv(in_dim, hidden)
         self.conv2 = SAGEConv(hidden, 2)
-
+    # Le forward passe les features de nœuds et la structure du graphe,
+    #  et retourne les logits de classification (fraude vs légitime).
     def forward(self, data):
         x = F.relu(self.conv1(data.x, data.edge_index))
         x = F.dropout(x, p=0.4, training=self.training)
         return self.conv2(x, data.edge_index)
 
-
+# Entraîner le GNN sur le train set uniquement, sans jamais exposer les transactions du test set.
 def train_gnn(data: Data) -> GraphSAGE:
     model   = GraphSAGE(data.x.shape[1])
     opt     = torch.optim.Adam(model.parameters(), lr=0.01, weight_decay=1e-3)
@@ -255,7 +261,8 @@ def train_gnn(data: Data) -> GraphSAGE:
 # ════════════════════════════════════════════════════════════════
 # XGBOOST + ISOLATION FOREST
 # ════════════════════════════════════════════════════════════════
-
+# Entraîner un modèle tabulaire classique (XGBoost) sur les features comportementales,
+# et un Isolation Forest pour détecter les anomalies sur ces mêmes features.
 def train_tabular(train: pd.DataFrame, test: pd.DataFrame, features: list):
     X_train = train[features]
     y_train = train["label_fraud"]
@@ -286,7 +293,8 @@ def train_tabular(train: pd.DataFrame, test: pd.DataFrame, features: list):
 # ════════════════════════════════════════════════════════════════
 # SEUIL OPTIMAL (F1)
 # ════════════════════════════════════════════════════════════════
-
+# Trouver le seuil optimal sur le test set pour maximiser le F1-score,
+# en utilisant la courbe de précision-rappel.
 def optimal_threshold(y_true, scores) -> float:
     prec, rec, thr = precision_recall_curve(y_true, scores)
     f1s     = 2 * prec * rec / (prec + rec + 1e-9)
@@ -300,7 +308,8 @@ def optimal_threshold(y_true, scores) -> float:
 # ════════════════════════════════════════════════════════════════
 # PIPELINE
 # ════════════════════════════════════════════════════════════════
-
+# Le pipeline complet : split temporel → resample train → GNN → XGBoost + IsoForest → score hybride →
+#  évaluation réaliste sur testset jamais vu.
 def run_pipeline(df: pd.DataFrame, features: list):
 
     # ── 1. Split temporel ────────────────────────────────────────
@@ -366,14 +375,18 @@ def run_pipeline(df: pd.DataFrame, features: list):
 # ════════════════════════════════════════════════════════════════
 # SAUVEGARDE
 # ════════════════════════════════════════════════════════════════
-
+# Sauvegarder le modèle complet : GNN, XGBoost, Isolation Forest, mapping des nœuds,
+#  seuil optimal, features utilisées, et stats IsoForest.
 def save_model(xgb, iso, gnn, node_map, auc, threshold, features, iso_min=0.0, iso_max=1.0):
     ts   = datetime.now().strftime("%Y%m%d_%H%M%S")
+    # Le modèle est sauvegardé dans un dossier horodaté pour versioning, 
+    # avec tous les éléments nécessaires à la réutilisation en production.
     path = MODEL_DIR / f"hybrid_{ts}"
     path.mkdir(exist_ok=True)
-
+    # Sauvegarde du modèle tabulaire (XGBoost + IsoForest) au format pickle.
     with open(path / "xgb.pkl",  "wb") as f: pickle.dump(xgb, f)
     with open(path / "iso.pkl",  "wb") as f: pickle.dump(iso, f)
+    # Le GNN est sauvegardé à part (format PyTorch) car il peut être lourd et nécessite un chargement spécifique.
     with open(path / "meta.pkl", "wb") as f:
         pickle.dump({
             "node_map"      : node_map,
@@ -390,7 +403,7 @@ def save_model(xgb, iso, gnn, node_map, auc, threshold, features, iso_min=0.0, i
 # ════════════════════════════════════════════════════════════════
 # MAIN
 # ════════════════════════════════════════════════════════════════
-
+# charger les données, exécuter le pipeline complet, et sauvegarder le modèle.
 if __name__ == "__main__":
     df, features = load_data()
     gnn, xgb, iso, node_map, auc, threshold, features, iso_min, iso_max = run_pipeline(df, features)

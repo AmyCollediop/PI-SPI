@@ -1,26 +1,70 @@
-# Core data science & ML
-numpy==1.26.4
-pandas==2.2.2
-scikit-learn==1.5.0
-xgboost==2.0.3
-networkx==3.3
-isolation-forest==0.1.5   # implémentation tierce de IsolationForest si besoin
-
-# Workflow & orchestration
-apache-airflow==2.9.1
-mlflow==2.12.1
-feast==0.40.0
-
-# Messaging & streaming
-kafka-python==2.0.2
-confluent-kafka==2.3.0
-
-# Infrastructure & monitoring
-docker==7.0.0
-redis==5.0.4
-prometheus-client==0.20.0
-grafanalib==0.8.0   # pour générer des dashboards Grafana en Python
-
-# Utilitaires
-pyyaml==6.0.1
+# =========================
+# API
+# =========================
+fastapi==0.136.3
+uvicorn==0.34.0
+starlette
+pydantic==2.13.4
+python-dotenv==1.2.2
 requests==2.32.3
+
+# =========================
+# DATA
+# =========================
+numpy==2.2.3
+pandas==2.2.3
+scipy==1.17.1
+pyarrow==16.1.0
+
+# =========================
+# MACHINE LEARNING
+# =========================
+scikit-learn==1.8.0
+xgboost==3.2.0
+torch==2.2.2
+torch-geometric==2.7.0
+torchvision==0.17.2
+networkx==3.6.1
+joblib==1.5.3
+shap==0.51.0
+
+# =========================
+# FEATURE STORE
+# =========================
+feast==0.63.0
+redis==5.3.1
+minio==7.2.20
+
+# =========================
+# STREAMING
+# =========================
+confluent-kafka==2.14.0
+
+# =========================
+# AIRFLOW
+# =========================
+apache-airflow==2.10.0
+psycopg2-binary==2.9.12
+
+# =========================
+# EXPERIMENT TRACKING
+# =========================
+mlflow==3.13.0
+
+# =========================
+# DASHBOARD
+# =========================
+streamlit==1.58.0
+plotly==6.8.0
+matplotlib==3.10.9
+
+# =========================
+# MONITORING
+# =========================
+prometheus-client==0.25.0
+
+# =========================
+# STORAGE
+# =========================
+PyYAML==6.0.2
+docker==7.1.0

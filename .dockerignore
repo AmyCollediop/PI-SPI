@@ -1,0 +1,12 @@
+pispienv/
+.git/
+.vscode/
+__pycache__/
+*.pyc
+datasets/
+models/
+mlflow/
+storage/
+whole_weasel/
+airflow/logs/
+*.jar

@@ -21,7 +21,7 @@ from feast.types import (
 # ============================================================
 # ENTITY
 # ============================================================
-
+# L'entité centrale de notre plateforme de détection de fraude est l'alias du payeur (payer_alias),
 payer_alias = Entity(
     name="payer_alias",
     join_keys=["payer_alias"],
@@ -30,7 +30,8 @@ payer_alias = Entity(
 # ============================================================
 # DATA SOURCES
 # ============================================================
-
+# Ces sources de données sont des fichiers Parquet pré-construits,
+#  qui contiennent les features extraites à partir des données brutes.
 stream_file_source = FileSource(
     name="stream_file_source",
     path="data/stream_features.parquet",
@@ -64,7 +65,7 @@ training_source = FileSource(
 # ============================================================
 # STREAM PUSH SOURCE
 # ============================================================
-
+# Ce PushSource permet d'alimenter en temps réel les features extraites du flux de transactions,
 stream_push_source = PushSource(
     name="stream_features_source",
     batch_source=stream_file_source,
@@ -73,7 +74,8 @@ stream_push_source = PushSource(
 # ============================================================
 # STREAM FEATURES (REAL-TIME FRAUD SIGNALS)
 # ============================================================
-
+# Ces features sont extraites en temps réel à partir du flux de transactions, 
+# et capturent les signaux de fraude immédiats liés à la transaction en cours.
 stream_features = FeatureView(
     name="stream_features",
     entities=[payer_alias],
@@ -124,7 +126,8 @@ stream_features = FeatureView(
 # ============================================================
 # BEHAVIORAL FEATURES (USER HISTORY)
 # ============================================================
-
+# Ces features sont extraites de l'historique de transactions de chaque alias, et capturent les patterns comportementaux, 
+# les changements de comportement, et les anomalies par rapport à l'historique de l'alias.
 behavioral_features = FeatureView(
     name="behavioral_features",
     entities=[payer_alias],
@@ -161,7 +164,8 @@ behavioral_features = FeatureView(
 # ============================================================
 # INTERBANK FEATURES
 # ============================================================
-
+# Ces features capturent les interactions entre institutions financières, les flux interbancaires,
+# et les changements de comportement liés aux institutions.
 interbank_features = FeatureView(
     name="interbank_features",
     entities=[payer_alias],
@@ -185,7 +189,9 @@ interbank_features = FeatureView(
 # ============================================================
 # GRAPH FEATURES (AML / NETWORK)
 # ============================================================
-
+# Ces features sont extraites d'un graphe de transactions construit à partir des données historiques,
+# et alimenté par un script de feature engineering dédié (graph_features.py).
+# Elles capturent des patterns de réseau, des anomalies structurelles, et des rôles potentiels dans le graphe de transactions.
 graph_features = FeatureView(
     name="graph_features",
     entities=[payer_alias],
@@ -215,7 +221,9 @@ graph_features = FeatureView(
 # ============================================================
 # TRAINING FEATURES (ML)
 # ============================================================
-
+# Ce FeatureView regroupe toutes les features utilisées pour entraîner le modèle ML,
+# ainsi que le label de fraude. Il est alimenté par un fichier de dataset d'entraînement pré-construit, 
+# qui peut être régénéré à volonté à partir des données brutes et des scripts de feature engineering.
 training_features = FeatureView(
     name="training_features",
     entities=[payer_alias],
@@ -248,7 +256,7 @@ training_features = FeatureView(
 # ============================================================
 # ML FEATURE CONTRACT
 # ============================================================
-
+# Cette liste définit l'ordre des features utilisées par le modèle ML (XGBoost) pour faire ses prédictions.
 ML_FEATURE_ORDER = [
     "log_amount",
     "tx_count_1min",

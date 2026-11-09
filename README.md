@@ -9,9 +9,9 @@
 
 1. Présentation générale
    
-PI-SPI est un système de détection de fraude de niveau production conçu pour le réseau de paiement instantané de la zone UEMOA (Union Économique et Monétaire Ouest-Africaine). Il combine apprentissage automatique hybride, règles métier et monitoring temps réel pour protéger les transactions des 8 pays membres.
+PI-SPI est un système de détection de fraude conçu pour le réseau de paiement instantané de la zone UEMOA (Union Économique et Monétaire Ouest-Africaine). Il combine apprentissage automatique hybride, règles métier et monitoring temps réel pour protéger les transactions des 8 pays membres.
 
-Imaginons notre système de détection de la fraude comme un agent de sécurité très expérimenté, capable d’analyser 66 000 transactions afin d’identifier les opérations frauduleuses.
+Imaginons notre système de détection de la fraude comme un agent de sécurité très expérimenté, capable d’analyser des milliers de transaction afin d’identifier les opérations frauduleuses.
 
 C’est comme un expert qui a examiné des milliers de dossiers au cours de sa carrière et qui a développé une grande capacité à détecter les dossiers non conformes.
 
@@ -58,7 +58,7 @@ Plusieurs modèles peuvent être utilisés :
 
 - XGBoost : pour analyser les données structurées et détecter les comportements frauduleux.
 - Isolation Forest (iForest) : pour repérer les transactions atypiques et les anomalies.
-- RNN (Recurrent Neural Network) : pour analyser les séquences de transactions et identifier les comportements inhabituels dans le temps.
+- GNN (Graphe Neural Network) : pour analyser les séquences de transactions et identifier les comportements inhabituels dans le temps.
 
 En combinant les règles métier et les modèles de Machine Learning, le système peut améliorer sa capacité à détecter les fraudes tout en limitant les faux positifs, c’est-à-dire les transactions légitimes signalées à tort comme frauduleuses.
 

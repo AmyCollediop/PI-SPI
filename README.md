@@ -7,7 +7,66 @@
 
 ## 🎯 Présentation
 
+1. Présentation générale
+   
 PI-SPI est un système de détection de fraude de niveau production conçu pour le réseau de paiement instantané de la zone UEMOA (Union Économique et Monétaire Ouest-Africaine). Il combine apprentissage automatique hybride, règles métier et monitoring temps réel pour protéger les transactions des 8 pays membres.
+
+Imaginons notre système de détection de la fraude comme un agent de sécurité très expérimenté, capable d’analyser 66 000 transactions afin d’identifier les opérations frauduleuses.
+
+C’est comme un expert qui a examiné des milliers de dossiers au cours de sa carrière et qui a développé une grande capacité à détecter les dossiers non conformes.
+
+Notre système joue ainsi le rôle d’un gardien invisible, placé entre les clients, la banque et la plateforme de paiement PISP.
+
+2. Objectif du système
+
+Sur 100 transactions, seulement 5 sont frauduleuses. Le système doit donc être suffisamment intelligent pour détecter ces 5 transactions suspectes sans bloquer les 95 transactions légitimes.
+
+En effet, un système trop strict peut générer de la frustration chez les clients en bloquant des opérations normales. À l’inverse, un système trop permissif risque de laisser passer les transactions frauduleuses.
+
+L’objectif est donc de trouver le bon équilibre entre la sécurité et la fluidité des paiements.
+
+3. Exemple de détection d’une fraude
+
+Lorsqu’une transaction frauduleuse est détectée, le système analyse son niveau de risque et peut immédiatement bloquer l’opération si les règles de sécurité le justifient.
+
+Exemple :
+
+- Score de risque : 71 %.
+- Motifs : nouveau téléphone inconnu et montant de la transaction 30 fois supérieur au montant habituel.
+- Décision : transaction suspecte, nécessitant une vérification ou un blocage selon le seuil de risque défini.
+
+Le système ne se contente donc pas d’identifier une anomalie : il cherche également à expliquer pourquoi une transaction est considérée comme suspecte.
+
+4. Un agent intelligent qui apprend les habitudes des clients
+
+Il ne faut pas oublier que notre système est un agent intelligent conçu pour connaître les habitudes de chaque client grâce aux données historiques des transactions.
+
+Il est entraîné à reconnaître plusieurs règles métier, par exemple :
+
+- Fréquence anormale : effectuer 10 transactions en une minute peut indiquer un comportement automatisé ou suspect.
+- Nouvel appareil : une transaction effectuée depuis un appareil inconnu, associée à un montant élevé, constitue un signal de risque.
+- Pays inhabituel : une opération réalisée depuis un pays rarement utilisé par le client peut nécessiter une vérification supplémentaire.
+- Montant inhabituel : une transaction dont le montant est très supérieur aux habitudes du client peut être considérée comme suspecte.
+
+Ces éléments ne prouvent pas nécessairement une fraude. Ils constituent des indicateurs que le système combine pour évaluer le risque global d’une transaction.
+
+5. Intégration de l’intelligence artificielle
+
+Pour améliorer les performances du système, nous pouvons intégrer une approche d’apprentissage automatique (Machine Learning, ou ML).
+
+Plusieurs modèles peuvent être utilisés :
+
+- XGBoost : pour analyser les données structurées et détecter les comportements frauduleux.
+- Isolation Forest (iForest) : pour repérer les transactions atypiques et les anomalies.
+- RNN (Recurrent Neural Network) : pour analyser les séquences de transactions et identifier les comportements inhabituels dans le temps.
+
+En combinant les règles métier et les modèles de Machine Learning, le système peut améliorer sa capacité à détecter les fraudes tout en limitant les faux positifs, c’est-à-dire les transactions légitimes signalées à tort comme frauduleuses.
+
+Conclusion
+
+Notre système de détection de la fraude agit comme un expert de la sécurité financière : il observe, apprend, analyse et prend des décisions en fonction du niveau de risque.
+
+Son objectif principal est de détecter un maximum de transactions frauduleuses tout en préservant les transactions légitimes, afin de garantir des paiements plus sûrs et une meilleure expérience client.
 
 ---
 
@@ -116,7 +175,7 @@ Pour arrêter les services : `docker compose down`.
 | Airflow | [http://localhost:8080](http://localhost:8080) |
 | Console MinIO | [http://localhost:9001](http://localhost:9001) |
 
-Ces adresses sont accessibles sur la machine qui exécute Docker. Pour partager le dashboard avec votre manager sur Internet, déployez le projet sur un serveur et remplacez le lien local par l'URL publique fournie par l'hébergeur.
+Ces adresses sont accessibles que sur ma machine . 
 
 ---
 

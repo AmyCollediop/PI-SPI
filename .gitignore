@@ -25,8 +25,8 @@ models/*/gnn.pt
 models/*/meta.pkl
 
 # ── Données (volumineuses) ────────────────────────────────────
-datasets/*.parquet
-datasets/*.csv
+#datasets/*.parquet
+#datasets/*.csv
 datasets/*.json
 datasets/*.ndjson
 
@@ -36,7 +36,7 @@ mlflow/
 
 # ── Feast ─────────────────────────────────────────────────────
 feast_repo/data/registry.db
-feast_repo/data/*.parquet
+#feast_repo/data/*.parquet
 feast_repo/__pycache__/
 
 # ── Airflow ───────────────────────────────────────────────────
